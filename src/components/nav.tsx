@@ -7,14 +7,14 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "Schedule", icon: CalendarDays, match: (p: string) => p === "/" || p.startsWith("/events") },
   { href: "/documents", label: "Documents", icon: FileSignature, match: (p: string) => p.startsWith("/documents") },
-  { href: "/team", label: "Team", icon: Users, match: (p: string) => p.startsWith("/team"), admin: true },
+  { href: "/team", label: "Team", icon: Users, match: (p: string) => p.startsWith("/team"), manager: true },
   { href: "/account", label: "Account", icon: UserRound, match: (p: string) => p.startsWith("/account") },
   { href: "/settings", label: "Settings", icon: Settings2, match: (p: string) => p.startsWith("/settings"), admin: true },
 ];
 
-export function NavLinks({ isAdmin, variant }: { isAdmin: boolean; variant: "sidebar" | "tabs" }) {
+export function NavLinks({ isAdmin, isManager, variant }: { isAdmin: boolean; isManager: boolean; variant: "sidebar" | "tabs" }) {
   const path = usePathname();
-  const links = LINKS.filter((l) => !l.admin || isAdmin);
+  const links = LINKS.filter((l) => (!("admin" in l) || isAdmin) && (!("manager" in l) || isManager));
 
   if (variant === "tabs") {
     return (

@@ -10,7 +10,7 @@ const W = 600;
 const H = 200;
 
 /** The signer's panel: draw or type a signature, agree, and submit. Decline is tucked underneath. */
-export function SignPanel({ documentId, signerName, requireLocation }: { documentId: string; signerName: string; requireLocation: boolean }) {
+export function SignPanel({ documentId, signerName }: { documentId: string; signerName: string }) {
   const [state, action] = useActionState(signDocument.bind(null, documentId), undefined);
   const [declineState, declineAction] = useActionState(declineDocument.bind(null, documentId), undefined);
   const [mode, setMode] = useState<"drawn" | "typed">("drawn");
@@ -106,12 +106,17 @@ export function SignPanel({ documentId, signerName, requireLocation }: { documen
     setDrawn("");
   };
 
-  const ready = agree && !locating && (!requireLocation || Boolean(evidence?.geo)) && (mode === "drawn" ? hasInk : typed.trim().length >= 2);
+  // Location is compulsory: the button stays off until the device has shared it.
+  const ready = agree && !locating && Boolean(evidence?.geo) && (mode === "drawn" ? hasInk : typed.trim().length >= 2);
 
   return (
     <section className="card p-5 sm:p-6">
       <h2 className="font-semibold">Sign this document</h2>
       <p className="mt-1 text-sm text-muted">Read the document above, then sign below.</p>
+      <p className="mt-3 flex items-start gap-2 rounded-xl bg-warning-soft px-3 py-2.5 text-sm text-warning">
+        <MapPin className="mt-px size-4 shrink-0" />
+        Your location is required to sign. When you tick the box below, your browser asks for it: choose Allow.
+      </p>
 
       <form action={action} className="mt-5 space-y-5">
         <FormMessage error={state?.error} />
@@ -206,7 +211,11 @@ export function SignPanel({ documentId, signerName, requireLocation }: { documen
               `Location captured (accurate to about ${Math.round(evidence.geo.accuracy)} m).`
             ) : (
               <>
-                {requireLocation ? "Location is needed to sign." : "Location not shared."}{" "}
+                <span className="font-medium text-danger">
+                  {evidence?.geoStatus === "denied"
+                    ? "Location is required to sign, and your browser blocked it. Allow location for this site (the icon next to the address bar), then"
+                    : "Location is required to sign and couldn't be read. Turn on location (GPS) on this device, then"}
+                </span>{" "}
                 <button type="button" onClick={() => void collectDetails()} className="font-semibold text-primary hover:underline">
                   Try again
                 </button>

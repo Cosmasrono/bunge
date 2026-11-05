@@ -6,7 +6,9 @@ import { UNUSED_RESET } from "./reset";
 
 export const INVITE_HOURS = 48;
 
-export const ROLE_LABEL = { admin: "Admin", director: "Director" } as const;
+import { ROLE_LABEL, type RoleName } from "./permissions";
+
+export { ROLE_LABEL };
 
 /** Public self-sign-up is off by default: accounts are created by an admin. Set ALLOW_PUBLIC_SIGNUP=true to open it. */
 export const signupOpen = () => process.env.ALLOW_PUBLIC_SIGNUP === "true";
@@ -17,7 +19,7 @@ export const signupOpen = () => process.env.ALLOW_PUBLIC_SIGNUP === "true";
  * `kind` only changes the wording and the page they land on: "invite" for a brand-new account.
  */
 export async function sendSetPasswordLink(
-  user: { id: string; name: string; email: string; role: keyof typeof ROLE_LABEL },
+  user: { id: string; name: string; email: string; role: RoleName },
   invitedBy: { name: string },
   kind: "invite" | "reset",
 ) {

@@ -53,7 +53,7 @@ async function deliver(email: string, name: string, code: string | null) {
  * If the email is already registered, it behaves exactly the same on screen
  * (so nobody can test which emails have accounts), but no code can ever match.
  */
-export async function startSignup(input: { email: string; name: string; passwordHash: string; role: "admin" | "director" }) {
+export async function startSignup(input: { email: string; name: string; passwordHash: string; role: "admin" | "staff" }) {
   const db = getDb();
   const exists = await emailExists(input.email);
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");

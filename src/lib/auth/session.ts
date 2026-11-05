@@ -73,6 +73,13 @@ export async function requireUser() {
   return user;
 }
 
+/** Admins and directors (the Team page). */
+export async function requireManager() {
+  const user = await requireUser();
+  if (user.role !== "admin" && user.role !== "director") redirect("/");
+  return user;
+}
+
 export async function requireAdmin() {
   const user = await requireUser();
   if (user.role !== "admin") redirect("/");

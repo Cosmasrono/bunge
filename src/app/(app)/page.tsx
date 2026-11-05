@@ -2,6 +2,7 @@ import { BellOff, BellRing, CalendarPlus, ChevronRight, Clock, MapPin, Plus, Rep
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AutoRefresh, Flash } from "@/components/client-bits";
+import { canScheduleForOthers } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { getSchedule, listPeople, type ScheduleItem } from "@/lib/events";
 import { mailConfigured } from "@/lib/mail";
@@ -18,8 +19,8 @@ function greeting(hour: number) {
 export default async function SchedulePage({ searchParams }: PageProps<"/">) {
   const user = await requireUser();
   const sp = await searchParams;
-  // Admins can look at (and add events to) a director's schedule with ?for=<id>.
-  const people = user.role === "admin" ? await listPeople(user.id) : [];
+  // People allowed to schedule for others can look at (and add events to) anyone's schedule with ?for=<id>.
+  const people = canScheduleForOthers(user) ? await listPeople(user.id) : [];
   const viewing = typeof sp.for === "string" ? (people.find((p) => p.id === sp.for) ?? null) : null;
   const owner = viewing ?? user;
   const newHref = viewing ? `/events/new?for=${viewing.id}` : "/events/new";

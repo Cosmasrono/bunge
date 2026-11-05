@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getDb, isObjectId } from "@/db";
 import { REPEAT_OPTIONS } from "@/db/schema";
 import { allowAttempt } from "@/lib/auth/request";
+import { canScheduleForOthers } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { mailConfigured, sendEmail, APP_URL } from "@/lib/mail";
 import { LEAD_OPTIONS, localStringToUtc } from "@/lib/time";
@@ -65,7 +66,7 @@ export async function createEvent(_: FormState, form: FormData): Promise<FormSta
   // Admins can add an event to someone else's schedule; they get the reminders.
   let owner = { id: user.id, timezone: user.timezone };
   const forUserId = String(form.get("forUserId") ?? "");
-  if (user.role === "admin" && forUserId && forUserId !== user.id) {
+  if (canScheduleForOthers(user) && forUserId && forUserId !== user.id) {
     const target = isObjectId(forUserId) ? await getDb().user.findUnique({ where: { id: forUserId }, select: { id: true, timezone: true } }) : null;
     if (!target) return { error: "That person no longer has an account.", fields: { forUserId } };
     owner = target;
@@ -82,7 +83,7 @@ export async function updateEvent(eventId: string, _: FormState, form: FormData)
   if (!isObjectId(eventId)) return { error: "That event no longer exists." };
   const db = getDb();
   // Admins may edit anyone's events; everyone else only their own.
-  const scope = user.role === "admin" ? { id: eventId } : { id: eventId, userId: user.id };
+  const scope = canScheduleForOthers(user) ? { id: eventId } : { id: eventId, userId: user.id };
   const existing = await db.event.findFirst({ where: scope });
   if (!existing) return { error: "That event no longer exists." };
   // Keep the event's own time zone when editing.
@@ -102,7 +103,7 @@ export async function deleteEvent(eventId: string) {
   let back = "/?deleted=1";
   if (isObjectId(eventId)) {
     const db = getDb();
-    const scope = user.role === "admin" ? { id: eventId } : { id: eventId, userId: user.id };
+    const scope = canScheduleForOthers(user) ? { id: eventId } : { id: eventId, userId: user.id };
     const existing = await db.event.findFirst({ where: scope, select: { userId: true } });
     if (existing) {
       await db.event.deleteMany({ where: scope });

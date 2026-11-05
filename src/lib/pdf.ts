@@ -61,16 +61,10 @@ export function canTypeSignature(text: string) {
   return [...text].every((c) => /[\x20-\x7E -ÿ]/.test(c));
 }
 
-/**
- * Returns the original PDF plus one extra page: a signature certificate with the signature,
- * who signed, when, from which address, and the SHA-256 fingerprint of the original file.
- */
-export async function buildSignedPdf(opts: {
-  original: Uint8Array;
-  title: string;
-  originalHash: string;
-  signer: { name: string; email: string };
-  sender: { name: string; email: string };
+/** Everything recorded about one person's signature. */
+export type SignerProof = {
+  name: string;
+  email: string;
   signedAt: Date;
   timezone: string;
   ip: string;
@@ -80,7 +74,20 @@ export async function buildSignedPdf(opts: {
   signature: SignatureInput;
   /** Where to stamp the signature on the document itself; null = certificate page only. */
   box?: SignatureBox | null;
-  /** Short reference printed under the stamped signature. */
+};
+
+/**
+ * Returns the original PDF with every signature stamped where the sender marked it, plus one signature
+ * certificate page per signer: the signature, who signed, when, from which address, and the SHA-256
+ * fingerprint of the original file.
+ */
+export async function buildSignedPdf(opts: {
+  original: Uint8Array;
+  title: string;
+  originalHash: string;
+  sender: { name: string; email: string };
+  signers: SignerProof[];
+  /** Short reference printed under each stamped signature. */
   reference?: string;
 }) {
   const pdf = await PDFDocument.load(opts.original, { updateMetadata: false });
@@ -88,8 +95,23 @@ export async function buildSignedPdf(opts: {
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const script = await pdf.embedFont(StandardFonts.TimesRomanItalic);
 
-  const placedOn = await stampSignature(pdf, opts, { regular, script });
+  const placed: (number | null)[] = [];
+  for (const s of opts.signers) placed.push(await stampSignature(pdf, s, opts.reference, { regular, script }));
+  for (let i = 0; i < opts.signers.length; i++) {
+    await addCertificatePage(pdf, { regular, bold, script }, opts, opts.signers[i], placed[i], i, opts.signers.length);
+  }
+  return pdf.save();
+}
 
+async function addCertificatePage(
+  pdf: PDFDocument,
+  { regular, bold, script }: { regular: PDFFont; bold: PDFFont; script: PDFFont },
+  doc: { title: string; originalHash: string; sender: { name: string; email: string } },
+  s: SignerProof,
+  placedOn: number | null,
+  index: number,
+  total: number,
+) {
   const page = pdf.addPage([595.28, 841.89]); // A4
   const left = 56;
   const width = 595.28 - left * 2;
@@ -101,7 +123,7 @@ export async function buildSignedPdf(opts: {
 
   page.drawRectangle({ x: 0, y: 842 - 6, width: 595.28, height: 6, color: accent });
   page.drawRectangle({ x: 0, y: 842 - 8, width: 595.28, height: 2, color: pink });
-  page.drawText("Signature certificate", { x: left, y, size: 24, font: bold, color: ink });
+  page.drawText(total > 1 ? `Signature certificate (${index + 1} of ${total})` : "Signature certificate", { x: left, y, size: 24, font: bold, color: ink });
   y -= 22;
   page.drawText("This page was added when the document was signed electronically.", { x: left, y, size: 10.5, font: regular, color: muted });
   y -= 44;
@@ -114,37 +136,37 @@ export async function buildSignedPdf(opts: {
   };
 
   const when = new Intl.DateTimeFormat("en-GB", {
-    timeZone: opts.timezone,
+    timeZone: s.timezone,
     dateStyle: "full",
     timeStyle: "long",
-  }).format(opts.signedAt);
+  }).format(s.signedAt);
 
-  row("Document", opts.title);
-  row("Sent by", `${opts.sender.name} <${opts.sender.email}>`);
-  row("Signed by", `${opts.signer.name} <${opts.signer.email}>`);
-  row("Signed on", `${when}  (${opts.signedAt.toISOString()})`);
-  row("From IP address", opts.ip);
+  row("Document", doc.title);
+  row("Sent by", `${doc.sender.name} <${doc.sender.email}>`);
+  row("Signed by", `${s.name} <${s.email}>`);
+  row("Signed on", `${when}  (${s.signedAt.toISOString()})`);
+  row("From IP address", s.ip);
 
   // The 64-character fingerprint is split over two lines so it fits the page.
   page.drawText("ORIGINAL FILE FINGERPRINT (SHA-256)", { x: left, y, size: 8, font: bold, color: muted });
   y -= 15;
-  page.drawText(opts.originalHash.slice(0, 32), { x: left, y, size: 11.5, font: regular, color: ink });
+  page.drawText(doc.originalHash.slice(0, 32), { x: left, y, size: 11.5, font: regular, color: ink });
   y -= 15;
-  page.drawText(opts.originalHash.slice(32), { x: left, y, size: 11.5, font: regular, color: ink });
+  page.drawText(doc.originalHash.slice(32), { x: left, y, size: 11.5, font: regular, color: ink });
   y -= 36;
 
   page.drawText("SIGNATURE", { x: left, y, size: 8, font: bold, color: muted });
   y -= 10;
   const boxH = 110;
   page.drawRectangle({ x: left, y: y - boxH, width: 300, height: boxH, borderColor: rgb(0.8, 0.8, 0.85), borderWidth: 1 });
-  if (opts.signature.kind === "drawn") {
-    const img = await pdf.embedPng(opts.signature.png);
+  if (s.signature.kind === "drawn") {
+    const img = await pdf.embedPng(s.signature.png);
     const scale = Math.min(280 / img.width, 90 / img.height);
     const w = img.width * scale;
     const h = img.height * scale;
     page.drawImage(img, { x: left + (300 - w) / 2, y: y - boxH + (boxH - h) / 2, width: w, height: h });
   } else {
-    const text = opts.signature.text;
+    const text = s.signature.text;
     let size = 34;
     while (size > 14 && script.widthOfTextAtSize(text, size) > 280) size -= 2;
     page.drawText(text, { x: left + 10, y: y - boxH / 2 - size / 3, size, font: script, color: ink });
@@ -154,15 +176,15 @@ export async function buildSignedPdf(opts: {
   // What the signer's device reported, with their consent (the server records the time and IP address itself).
   page.drawText("SIGNING DETAILS", { x: left, y, size: 8, font: bold, color: muted });
   y -= 16;
-  const ev = opts.evidence;
+  const ev = s.evidence;
   const details: [string, string][] = [
-    ["Browser", describeAgent(opts.agent)],
+    ["Browser", describeAgent(s.agent)],
     ["Device", [ev.platform, ev.screen, ev.touch === undefined ? "" : ev.touch ? "touch screen" : "no touch screen", ev.language].filter(Boolean).join("  |  ") || "Not reported"],
     ["Device ID", ev.deviceId ?? "Not reported"],
     ["Device time zone", ev.timezone ?? "Not reported"],
     ["Location (GPS)", describeGeo(ev)],
-    ["Address", opts.place.address ?? (ev.geo ? "Not found" : "No location shared")],
-    ["IP location", describeIpPlace(opts.place) ?? "Not available"],
+    ["Address", s.place.address ?? (ev.geo ? "Not found" : "No location shared")],
+    ["IP location", describeIpPlace(s.place) ?? "Not available"],
     ["Signature placed", placedOn === null ? "On this certificate page only" : `On page ${placedOn + 1} of the document, and on this page`],
   ];
   for (const [label, value] of details) {
@@ -187,7 +209,6 @@ export async function buildSignedPdf(opts: {
   }
   if (line) page.drawText(line, { x: left, y, size: 9.5, font: regular, color: muted });
 
-  return pdf.save();
 }
 
 /**
@@ -196,7 +217,8 @@ export async function buildSignedPdf(opts: {
  */
 async function stampSignature(
   pdf: PDFDocument,
-  opts: Parameters<typeof buildSignedPdf>[0],
+  opts: SignerProof,
+  reference: string | undefined,
   fonts: { regular: PDFFont; script: PDFFont },
 ): Promise<number | null> {
   const box = opts.box;
@@ -233,7 +255,7 @@ async function stampSignature(
 
   if (showCaption) {
     const when = new Intl.DateTimeFormat("en-GB", { timeZone: opts.timezone, dateStyle: "medium", timeStyle: "short" }).format(opts.signedAt);
-    const lines = [`Signed electronically by ${opts.signer.name}`, `${when}${opts.reference ? ` · Ref ${opts.reference}` : ""} · see last page`];
+    const lines = [`Signed electronically by ${opts.name}`, `${when}${reference ? ` · Ref ${reference}` : ""} · see last pages`];
     lines.forEach((line, i) => {
       target.drawText(fit(line, fonts.regular, captionSize, bw - 6), {
         x: bx + 3,

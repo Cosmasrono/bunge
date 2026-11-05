@@ -126,23 +126,30 @@ This makes a compressed WebP (about 200 to 450 KB for desktop, a smaller one for
 
 ## People, roles and invitations
 
-There are two roles:
+There are three roles:
 
-- **Admin**: creates accounts on the **Team** page, can add events to anyone's schedule, can open and edit anyone's events,
-  and sees **Settings**. The first account (created on the setup page) is an admin.
-- **Director**: sees and manages their own schedule. Events an admin adds for them show up in their schedule with
-  "Added by …", and they get the reminders. They can change or turn off reminders on any event on their schedule.
+| | Own schedule, sign documents | Schedule for others | Send documents | Team page (people, permissions) | Settings, change roles |
+|---|---|---|---|---|---|
+| **Admin** | yes | yes | yes | yes | yes |
+| **Director** | yes | yes | yes | yes (creates staff) | no |
+| **Staff** | yes | if allowed | if allowed | no | no |
 
-**Adding a person:** an admin opens **Team**, enters name, email and role. The person gets an email with a one-time link
-(valid for 48 hours). The link opens a page where they choose their own password and are signed in. **No password is ever
-emailed.** The same page handles forgotten passwords: **Resend invite** / **Send reset link** on the Team page sends a fresh link.
+A director or admin gives a staff member a permission on the **Team** page: each staff row has two switches,
+**Schedule for others** and **Send documents**. They can also be ticked when inviting. The first account (created on the
+setup page) is an admin. Only admins create admins or directors, and change roles (the last admin can't be demoted).
 
-Public sign-up is **off** by default, because accounts are created by an admin. To let anyone register themselves
-(they become directors), set `ALLOW_PUBLIC_SIGNUP=true`.
+Events added to someone else's schedule show up there with "Added by …", and that person gets the reminders. They can
+change or turn off reminders on any event on their schedule.
 
-**Admin viewing a director's schedule:** on the Schedule page, the admin sees a row of names above the events. Pick a
-director to see their schedule, and **New event** then adds to theirs. When creating an event you can also choose
-*Whose schedule?* from the form.
+**Adding a person:** an admin or director opens **Team**, enters name, email and role. The person gets an email with a
+one-time link (valid for 48 hours). The link opens a page where they choose their own password and are signed in. **No
+password is ever emailed.** **Resend invite** / **Send reset link** on the Team page sends a fresh link.
+
+Public sign-up is **off** by default, because accounts are created on the Team page. To let anyone register themselves
+(they become staff), set `ALLOW_PUBLIC_SIGNUP=true`.
+
+**Viewing someone's schedule:** people who may schedule for others see a row of names above their Schedule. Pick a person
+to see their schedule; **New event** then adds to theirs. The event form also has *Whose schedule?*.
 
 ## Notifications (phone and computer pop-ups)
 
@@ -172,20 +179,31 @@ Good to know:
 
 ## Documents (send a PDF to be signed)
 
-Admins and directors can send documents to each other (and to themselves, to try it out).
+Admins and directors can send a document to one or more people to sign (including themselves, to try it out).
 
-1. **Documents → Send a document**: upload a PDF (up to 10 MB, not password-protected), choose who should sign it
-   and add an optional message. The person gets an email.
-   **Mark where the signature goes:** the form shows the PDF's pages; pick the page and click the signature line
-   (Small / Medium / Large sets the size). The signature is then stamped exactly there, with a small
-   "Signed electronically by … · see last page" line under it. Pages turned sideways aren't supported for this.
-2. They open **Documents**, read the PDF, then **draw or type** their signature, tick the consent box and submit.
-   They can also decline and give a reason.
-3. The app adds a **signature certificate page** to the PDF (signer, time, IP address and a SHA-256 fingerprint of
-   the original file). The sender is emailed and can download the signed copy. The sender can cancel while it is
-   still waiting.
+1. **Documents → Send a document**: upload a PDF (up to 10 MB, not password-protected), tick everyone who should sign
+   (**Select all** ticks the whole team) and add an optional message.
+   **Mark where each signature goes:** the form shows the PDF's pages; with several signers, pick a name under
+   *Placing for* (or just click: it moves to the next person after each click) and click their signature line.
+   Small / Medium / Large sets the size. Pages turned sideways aren't supported for this.
+2. **Signing deadline (optional):** tick *Add a signing deadline to everyone's schedule* and pick a date and time. Each
+   signer gets a "Sign: …" event on their schedule with the usual reminders (1 day, 5 hours, 1 hour and 15 minutes
+   before). The event is removed once they sign or decline, or when the document is cancelled.
+3. **Notifications:** every signer gets a pop-up inside the app (bottom corner, within about 20 seconds while the app is open),
+   a phone/computer notification if they turned notifications on (Account page), and an email. The sender gets the same as each
+   signature comes in, and everyone is told when all have signed (or someone declined).
+4. Each signer opens **Documents**, reads the PDF, then **draws or types** their signature, ticks the consent box and submits.
+   **Sharing their location is compulsory**: the browser asks for it, and the Sign button stays off until it is shared.
+   They can also decline with a reason, which closes the document for everyone.
+5. When the last person signs, the app builds the signed PDF: every signature in its marked spot, plus a **signature certificate
+   page for each signer** (time, GPS location and street address, IP address, device and a SHA-256 fingerprint of the original file).
+   The sender can cancel while it is still waiting.
 
-Only the sender and the signer can open a document. Everything is recorded in the audit log.
+Only the sender and the signers can open a document. Everything is recorded in the audit log.
+
+**Privacy between signers:** only the sender sees who else signs, everyone's progress, signatures, locations and IP
+addresses, and downloads the complete signed PDF. Each signer sees only their own part, and their signed copy contains only
+their own signature and certificate page. Emails to signers never name the other signers.
 
 - The PDFs (original and signed) are stored **in the MongoDB database** (`stored_files` collection), so documents work the
   same on your PC and on Vercel, and are included when you back up the database. Run `npm run db:push` once after updating.
@@ -197,10 +215,11 @@ Only the sender and the signer can open a document. Everything is recorded in th
   (recorded by the server), and the browser, device info, time zone, a per-device ID and the GPS **location** (reported by the
   signer's device; the browser asks permission). They are printed on the certificate page and shown under *How it was signed*.
   A **MAC address cannot be collected**: browsers can't read it and it never leaves the local network. The device ID is the substitute.
-  Set `REQUIRE_SIGNER_LOCATION=true` to refuse signing when location is declined.
+  Location is required: a signature without it is refused.
 - This is a simple electronic signature (a confirmed, logged-in user who agreed to sign), fine for everyday approvals.
   It is not a certified digital signature.
-- After updating the code, run `npm run db:push` once to create the `documents` collection.
+- After updating the code, run `npm run db:push` once (it creates the `documents`, `document_signers` and `notices` collections).
+  Documents sent before several signers were supported are moved over automatically the first time they are opened.
 
 ---
 

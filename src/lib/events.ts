@@ -1,6 +1,7 @@
 import "server-only";
 import { getDb, isObjectId } from "@/db";
 import type { EventRow } from "@/db/schema";
+import { canScheduleForOthers } from "./auth/permissions";
 import { nextOccurrence } from "./time";
 
 export type ScheduleItem = EventRow & { next: Date | null; /** Name of the admin who added it to this person's schedule, if not themselves. */ addedBy: string | null };
@@ -26,16 +27,16 @@ export async function getSchedule(userId: string, now = new Date()) {
   return { upcoming, past };
 }
 
-/** One event: your own, or (for admins) anyone's. */
-export async function getEventFor(viewer: { id: string; role: string }, eventId: string) {
+/** One event: your own, or anyone's for people allowed to schedule for others. */
+export async function getEventFor(viewer: { id: string; role: string; canSchedule?: boolean | null }, eventId: string) {
   if (!isObjectId(eventId) || !isObjectId(viewer.id)) return null;
   return getDb().event.findFirst({
-    where: viewer.role === "admin" ? { id: eventId } : { id: eventId, userId: viewer.id },
+    where: canScheduleForOthers(viewer) ? { id: eventId } : { id: eventId, userId: viewer.id },
     include: { user: { select: { id: true, name: true } } },
   });
 }
 
-/** Everyone except the viewer, for admins who add events to other people's schedules. */
+/** Everyone except the viewer, for people who add events to other people's schedules. */
 export async function listPeople(exceptUserId: string) {
   return getDb().user.findMany({
     where: { id: { not: exceptUserId } },

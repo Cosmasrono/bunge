@@ -10,9 +10,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// admin: everything, including Settings. director: manages people and permissions, schedules for others, sends documents.
+/// staff: their own schedule, and signing; can also schedule for others / send documents when a director or admin allows it.
 enum Role {
   admin
   director
+  staff
 }
 
 enum DocumentStatus {
@@ -20,6 +23,12 @@ enum DocumentStatus {
   signed
   declined
   cancelled
+}
+
+enum SignerStatus {
+  pending
+  signed
+  declined
 }
 
 enum Repeat {
@@ -34,11 +43,14 @@ model User {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   email        String    @unique // always stored lower-case
   name         String
-  role         Role      @default(director)
+  role         Role      @default(staff)
   passwordHash String
   timezone     String    @default("Africa/Nairobi")
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
+  /// Extra permissions for staff, granted by a director or admin (admins and directors always have them).
+  canSchedule      Boolean?
+  canSendDocuments Boolean?
 
   sessions       Session[]
   passwordResets PasswordReset[]
@@ -46,7 +58,9 @@ model User {
   auditLogs      AuditLog[]
   sentDocuments  Document[] @relation("DocumentSender")
   signDocuments  Document[] @relation("DocumentSigner")
+  signerRows     DocumentSigner[]
   pushSubscriptions PushSubscription[]
+  notices        Notice[]
 
   @@map("users")
 }
@@ -87,7 +101,7 @@ model PendingSignup {
   email        String
   name         String
   passwordHash String
-  role         Role     @default(director)
+  role         Role     @default(staff)
   codeHash     String
   attempts     Int      @default(0)
   sends        Int      @default(1)
@@ -172,8 +186,8 @@ model AppState {
   @@map("app_state")
 }
 
-/// A PDF one person sends to another to sign. The file itself lives in file storage (see src/lib/storage.ts);
-/// only its details are kept here.
+/// A PDF sent to one or more people to sign. The file itself lives in file storage (see src/lib/storage.ts);
+/// only its details are kept here. Who signs, and how each person signed, is in DocumentSigner.
 model Document {
   id            String         @id @default(auto()) @map("_id") @db.ObjectId
   title         String
@@ -184,32 +198,85 @@ model Document {
   /// SHA-256 (hex) of the original PDF, as uploaded.
   fileHash      String
   pageCount     Int
-  /// Where the signature is stamped on the document (see src/lib/signature-box.ts). Empty = certificate page only.
-  signatureBox  Json?
   senderId      String         @db.ObjectId
   sender        User           @relation("DocumentSender", fields: [senderId], references: [id], onDelete: Cascade)
-  signerId      String         @db.ObjectId
-  signer        User           @relation("DocumentSigner", fields: [signerId], references: [id], onDelete: Cascade)
+  /// pending until everyone signed (then signed); declined as soon as one signer declines.
   status        DocumentStatus @default(pending)
   createdAt     DateTime       @default(now())
-  /// When the signer signed, declined, or the sender cancelled.
+  /// When the last signer signed, someone declined, or the sender cancelled.
   respondedAt   DateTime?
-  declineReason String         @default("")
+  /// Signing deadline, if the sender put it on the signers' schedules.
+  dueAt         DateTime?
+  /// The signed PDF (all signatures plus one certificate page per signer), made when the last person signs.
   signedFileKey String?
   /// SHA-256 (hex) of the signed PDF.
   signedHash    String?
-  /// "drawn" or "typed".
-  signatureKind String?
-  signerIp      String?
-  signerAgent   String?
-  /// What the signer's device reported when signing (see src/lib/evidence.ts): location, device info, device id.
+
+  signers       DocumentSigner[]
+
+  // ---- Older, single-signer documents only. Moved into DocumentSigner automatically (src/lib/documents.ts).
+  signatureBox   Json?
+  signerId       String?        @db.ObjectId
+  signer         User?          @relation("DocumentSigner", fields: [signerId], references: [id], onDelete: Cascade)
+  declineReason  String         @default("")
+  signatureKind  String?
+  signerIp       String?
+  signerAgent    String?
   signerEvidence Json?
-  /// Worked out by the server when signing (see src/lib/geo.ts): street address for the GPS point, and the IP's city/country.
   signerPlace    Json?
 
   @@index([signerId, status])
   @@index([senderId, createdAt])
   @@map("documents")
+}
+
+/// One person who has to sign a document, and how they signed.
+model DocumentSigner {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  documentId    String       @db.ObjectId
+  document      Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId        String       @db.ObjectId
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Order shown on the document and certificate pages (0 = first).
+  position      Int          @default(0)
+  status        SignerStatus @default(pending)
+  /// Where this person's signature is stamped (see src/lib/signature-box.ts). Empty = certificate page only.
+  signatureBox  Json?
+  respondedAt   DateTime?
+  declineReason String       @default("")
+  /// "drawn" or "typed".
+  signatureKind String?
+  /// The signature itself, kept so the final PDF can carry every signer's: PNG as base64, or the typed name.
+  signatureData String?
+  ip            String?
+  agent         String?
+  /// What the signer's device reported (see src/lib/evidence.ts): location, device info, device id.
+  evidence      Json?
+  /// Street address for the GPS point and the IP's city/country (see src/lib/geo.ts).
+  place         Json?
+  /// The "sign by" event put on this person's schedule, removed once they answer.
+  eventId       String?      @db.ObjectId
+  createdAt     DateTime     @default(now())
+
+  @@unique([documentId, userId])
+  @@index([userId, status])
+  @@map("document_signers")
+}
+
+/// An in-app notification (shown as a pop-up while the app is open). Phone/computer pop-ups go through Web Push too.
+model Notice {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @db.ObjectId
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String    @default("")
+  /// Page in this app to open, e.g. /documents/abc.
+  url       String    @default("/")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@map("notices")
 }
 
 /// A browser or phone that agreed to get push notifications (Web Push).
