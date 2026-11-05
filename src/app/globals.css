@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #f1f3f9;
+  --border: #e3e6ef;
+  --text: #141a2b;
+  --muted: #5d6680;
+  --faint: #8a93ab;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: #eef0ff;
+  --primary-text: #ffffff;
+  --success: #0f8a5f;
+  --success-soft: #e6f6ef;
+  --warning: #b45309;
+  --warning-soft: #fdf3e2;
+  --danger: #d1343a;
+  --danger-soft: #fdecec;
+  --ring: rgb(79 70 229 / 0.35);
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 12px 32px -12px rgb(16 24 40 / 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1017;
+    --surface: #151a24;
+    --surface-2: #1c2230;
+    --border: #262d3d;
+    --text: #e9ecf3;
+    --muted: #a0a9bf;
+    --faint: #6f7891;
+    --primary: #7c74ff;
+    --primary-hover: #8f88ff;
+    --primary-soft: #232448;
+    --primary-text: #0b0d16;
+    --success: #3fcf95;
+    --success-soft: #12291f;
+    --warning: #f2a93b;
+    --warning-soft: #2c2212;
+    --danger: #ff6b6f;
+    --danger-soft: #2f1719;
+    --ring: rgb(124 116 255 / 0.4);
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 16px 40px -16px rgb(0 0 0 / 0.6);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-text: var(--primary-text);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@utility card {
+  @apply rounded-2xl border border-border bg-surface shadow-card;
+}
+@utility btn {
+  @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-4 focus-visible:ring-(--ring) disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-primary text-primary-text hover:bg-primary-hover;
+}
+@utility btn-secondary {
+  @apply btn border border-border bg-surface text-text hover:bg-surface-2;
+}
+@utility btn-ghost {
+  @apply btn text-muted hover:bg-surface-2 hover:text-text;
+}
+@utility btn-danger {
+  @apply btn border border-border bg-surface text-danger hover:bg-danger-soft;
+}
+@utility btn-sm {
+  @apply h-8 rounded-lg px-3 text-[13px];
+}
+@utility field-label {
+  @apply mb-1.5 block text-sm font-medium text-text;
+}
+@utility field-hint {
+  @apply mt-1.5 text-xs text-faint;
+}
+@utility input {
+  @apply block h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-[15px] text-text transition outline-none placeholder:text-faint focus:border-primary focus:ring-4 focus:ring-(--ring);
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted;
+}
+
+textarea.input {
+  @apply h-auto min-h-24 py-2.5 leading-relaxed;
+}

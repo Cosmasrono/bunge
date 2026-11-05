@@ -1,0 +1,202 @@
+// Nation Desk data model (MongoDB via Prisma).
+// No migrations: apply changes with `npm run db:push`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  manager
+}
+
+enum DocumentStatus {
+  pending
+  signed
+  declined
+  cancelled
+}
+
+enum Repeat {
+  none
+  daily
+  weekdays
+  weekly
+  monthly
+}
+
+model User {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  email        String    @unique // always stored lower-case
+  name         String
+  role         Role      @default(manager)
+  passwordHash String
+  timezone     String    @default("Africa/Nairobi")
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+
+  sessions       Session[]
+  passwordResets PasswordReset[]
+  events         Event[]
+  auditLogs      AuditLog[]
+  sentDocuments  Document[] @relation("DocumentSender")
+  signDocuments  Document[] @relation("DocumentSigner")
+
+  @@map("users")
+}
+
+/// Server-side sessions. The cookie holds a random token; we store only its SHA-256 (hex) as the id.
+model Session {
+  id         String   @id @map("_id")
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model PasswordReset {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String    @db.ObjectId
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+/// A sign-up waiting for its emailed 6-digit code. Only hashes of the code and password are stored.
+model PendingSignup {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String
+  name         String
+  passwordHash String
+  role         Role     @default(manager)
+  codeHash     String
+  attempts     Int      @default(0)
+  sends        Int      @default(1)
+  lastSentAt   DateTime @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([email])
+  @@map("pending_signups")
+}
+
+model RateLimit {
+  id  String   @id @default(auto()) @map("_id") @db.ObjectId
+  key String
+  at  DateTime @default(now())
+
+  @@index([key, at])
+  @@map("rate_limits")
+}
+
+model AuditLog {
+  id     String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId String?  @db.ObjectId
+  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action String
+  detail String   @default("")
+  ip     String?
+  at     DateTime @default(now())
+
+  @@index([userId, at])
+  @@map("audit_log")
+}
+
+model Event {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @db.ObjectId
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  location       String   @default("")
+  notes          String   @default("")
+  /// Wall-clock start in the event's time zone, "YYYY-MM-DDTHH:mm".
+  startLocal     String
+  timezone       String
+  /// First occurrence as an exact instant (for sorting and filtering).
+  startUtc       DateTime
+  repeat         Repeat   @default(none)
+  /// Minutes before the event to remind, e.g. [1440, 300, 60, 15]. 0 = at start time.
+  leads          Int[]    @default([1440, 300, 60, 15])
+  emailReminders Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  remindersSent ReminderSent[]
+
+  @@index([userId])
+  @@index([startUtc])
+  @@map("events")
+}
+
+/// One document per reminder sent, so nothing is ever sent twice (the unique index is the claim).
+model ReminderSent {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventId    String   @db.ObjectId
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occurrence DateTime
+  lead       Int
+  sentAt     DateTime @default(now())
+
+  @@unique([eventId, occurrence, lead])
+  @@index([occurrence])
+  @@map("reminders_sent")
+}
+
+/// Small key/value store for app status (e.g. last reminder run).
+model AppState {
+  key       String   @id @map("_id")
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("app_state")
+}
+
+/// A PDF one person sends to another to sign. The file itself lives in file storage (see src/lib/storage.ts);
+/// only its details are kept here.
+model Document {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  note          String         @default("")
+  fileName      String
+  fileSize      Int
+  fileKey       String
+  /// SHA-256 (hex) of the original PDF, as uploaded.
+  fileHash      String
+  pageCount     Int
+  senderId      String         @db.ObjectId
+  sender        User           @relation("DocumentSender", fields: [senderId], references: [id], onDelete: Cascade)
+  signerId      String         @db.ObjectId
+  signer        User           @relation("DocumentSigner", fields: [signerId], references: [id], onDelete: Cascade)
+  status        DocumentStatus @default(pending)
+  createdAt     DateTime       @default(now())
+  /// When the signer signed, declined, or the sender cancelled.
+  respondedAt   DateTime?
+  declineReason String         @default("")
+  signedFileKey String?
+  /// SHA-256 (hex) of the signed PDF.
+  signedHash    String?
+  /// "drawn" or "typed".
+  signatureKind String?
+  signerIp      String?
+  signerAgent   String?
+
+  @@index([signerId, status])
+  @@index([senderId, createdAt])
+  @@map("documents")
+}

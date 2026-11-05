@@ -1,0 +1,7 @@
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': false
+  esbuild: false
+  prisma: false
+minimumReleaseAgeExclude:
+  - lucide-react@1.68.0
