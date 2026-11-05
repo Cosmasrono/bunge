@@ -184,6 +184,8 @@ model Document {
   /// SHA-256 (hex) of the original PDF, as uploaded.
   fileHash      String
   pageCount     Int
+  /// Where the signature is stamped on the document (see src/lib/signature-box.ts). Empty = certificate page only.
+  signatureBox  Json?
   senderId      String         @db.ObjectId
   sender        User           @relation("DocumentSender", fields: [senderId], references: [id], onDelete: Cascade)
   signerId      String         @db.ObjectId
@@ -223,4 +225,16 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+/// Uploaded and signed PDFs. Kept in the database so the app also works on hosting without a permanent disk
+/// (such as Vercel). Each file is at most about 10 MB, under MongoDB's 16 MB per-record limit.
+model StoredFile {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  data      Bytes
+  size      Int
+  createdAt DateTime @default(now())
+
+  @@map("stored_files")
 }

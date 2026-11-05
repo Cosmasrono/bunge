@@ -67,6 +67,8 @@ export async function reverseGeocode(lat: number, lon: number): Promise<string |
 }
 
 export function describeIpPlace(p: Place) {
-  const parts = [p.ipCity, p.ipRegion, p.ipCountry].filter(Boolean);
+  // Vercel gives the region as a short code (e.g. "30" for Nairobi), which means little to a reader; show it only if it's a name.
+  const region = p.ipRegion && !/^[A-Z0-9]{1,3}$/i.test(p.ipRegion) ? p.ipRegion : undefined;
+  const parts = [p.ipCity, region, p.ipCountry].filter(Boolean);
   return parts.length ? parts.join(", ") : undefined;
 }

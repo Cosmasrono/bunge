@@ -1,13 +1,16 @@
-import { ArrowLeft, CheckCircle2, Download, ShieldCheck, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, MapPin, ShieldCheck, XCircle } from "lucide-react";
 import type { DocumentStatus } from "@prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cancelDocument } from "@/app/actions/documents";
 import { ConfirmSubmit, Flash } from "@/components/client-bits";
+import { getDb } from "@/db";
 import { requireUser } from "@/lib/auth/session";
 import { getDocumentFor, STATUS_LABEL } from "@/lib/documents";
 import { describeAgent, describeGeo, mapLink, parseEvidence } from "@/lib/evidence";
+import { describeIpPlace, parsePlace, reverseGeocode } from "@/lib/geo";
+import { parseSignatureBox } from "@/lib/signature-box";
 import { SignPanel } from "./sign-panel";
 
 export const metadata: Metadata = { title: "Document" };
@@ -40,6 +43,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
   const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: user.timezone, dateStyle: "medium", timeStyle: "short" });
   const view = doc.status === "signed" ? "signed" : "original";
   const file = `/api/documents/${doc.id}/file`;
+  const box = parseSignatureBox(doc.signatureBox);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -61,6 +65,11 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
           <Item label="To sign" value={`${doc.signer.name}${isSigner ? " (you)" : ""}`} sub={doc.signer.email} />
           <Item label="Sent" value={fmt.format(doc.createdAt)} />
           <Item label="File" value={`${doc.pageCount} ${doc.pageCount === 1 ? "page" : "pages"} · ${size(doc.fileSize)}`} sub={doc.fileName} />
+          <Item
+            label="Signature goes"
+            value={box ? `On page ${box.page + 1}, in the marked box` : "On a certificate page at the end"}
+            sub={box ? "A certificate page is also added at the end" : undefined}
+          />
           {doc.respondedAt && doc.status !== "pending" && (
             <Item label={doc.status === "signed" ? "Signed" : doc.status === "declined" ? "Declined" : "Cancelled"} value={fmt.format(doc.respondedAt)} />
           )}
@@ -106,7 +115,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
         </div>
       </section>
 
-      {doc.status === "signed" && <SigningDetails doc={doc} fmt={fmt} />}
+      {doc.status === "signed" && isSender && <SigningDetails doc={doc} fmt={fmt} />}
 
       <section className="card overflow-hidden">
         <iframe
@@ -127,35 +136,60 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
   );
 }
 
-function SigningDetails({ doc, fmt }: { doc: NonNullable<Awaited<ReturnType<typeof getDocumentFor>>>; fmt: Intl.DateTimeFormat }) {
+/** Proof of signing. Only the person who sent the document sees this. */
+async function SigningDetails({ doc, fmt }: { doc: NonNullable<Awaited<ReturnType<typeof getDocumentFor>>>; fmt: Intl.DateTimeFormat }) {
   const ev = parseEvidence(JSON.stringify(doc.signerEvidence ?? null));
+  let place = parsePlace(doc.signerPlace);
+  // Documents signed before addresses were looked up: find the address once and keep it.
+  if (ev.geo && !place.address) {
+    const address = await reverseGeocode(ev.geo.lat, ev.geo.lon);
+    if (address) {
+      place = { ...place, address };
+      await getDb().document.update({ where: { id: doc.id }, data: { signerPlace: JSON.parse(JSON.stringify(place)) } });
+    }
+  }
   const map = mapLink(ev);
+  const ipPlace = describeIpPlace(place);
   const device = [ev.platform, ev.screen, ev.language].filter(Boolean).join(" · ");
   return (
     <section className="card p-5 sm:p-6">
       <h2 className="flex items-center gap-2 font-semibold">
         <ShieldCheck className="size-4 text-faint" /> How it was signed
       </h2>
-      <dl className="mt-4 grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+      <p className="mt-1 text-sm text-muted">Only you, as the sender, can see these details.</p>
+
+      <div className="mt-5 rounded-xl bg-surface-2 px-4 py-3.5">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-faint">
+          <MapPin className="size-3.5" /> Where it was signed
+        </p>
+        <p className="mt-1 font-medium break-words">{place.address ?? (ev.geo ? "Address not found for this point" : "The signer didn't share their location")}</p>
+        {ev.geo && (
+          <p className="mt-1 text-xs text-muted">
+            GPS {describeGeo(ev)}
+            {map && (
+              <>
+                {" · "}
+                <a href={map} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">
+                  View on a map
+                </a>
+              </>
+            )}
+          </p>
+        )}
+        {place.address && <p className="mt-1 text-[11px] text-faint">Address data © OpenStreetMap contributors</p>}
+      </div>
+
+      <dl className="mt-5 grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
         <Item label="Signed at" value={doc.respondedAt ? fmt.format(doc.respondedAt) : "-"} sub="Recorded by the server" />
-        <Item label="IP address" value={doc.signerIp ?? "Not recorded"} sub="Recorded by the server" />
+        <Item label="IP address" value={doc.signerIp ?? "Not recorded"} sub={ipPlace ? `Around ${ipPlace} (approximate)` : "IP location not available"} />
         <Item label="Browser" value={describeAgent(doc.signerAgent)} sub="Recorded by the server" />
         <Item label="Device" value={device || "Not reported"} sub={ev.touch === undefined ? undefined : ev.touch ? "Touch screen" : "No touch screen"} />
         <Item label="Device ID" value={ev.deviceId ?? "Not reported"} sub="Random ID kept in the signer's browser" />
         <Item label="Device time zone" value={ev.timezone ?? "Not reported"} />
-        <div className="min-w-0 sm:col-span-2">
-          <dt className="text-xs font-medium text-faint">Location</dt>
-          <dd className="mt-0.5 font-medium break-words">{describeGeo(ev)}</dd>
-          {map && (
-            <dd className="text-xs">
-              <a href={map} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">
-                View on a map
-              </a>
-            </dd>
-          )}
-        </div>
       </dl>
-      <p className="mt-4 text-xs text-faint">Location and device details are reported by the signer&apos;s device with their consent. Time and IP address are recorded by the server.</p>
+      <p className="mt-4 text-xs text-faint">
+        GPS location and device details are reported by the signer&apos;s device with their consent. Time, IP address and IP location are recorded by the server.
+      </p>
     </section>
   );
 }

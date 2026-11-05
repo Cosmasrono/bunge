@@ -192,8 +192,8 @@ export function SignPanel({ documentId, signerName, requireLocation }: { documen
             className="mt-0.5 size-4 shrink-0 accent-(--primary)"
           />
           <span>
-            I have read this document and agree to sign it electronically. I agree that the time, my IP address, my device details and my location are
-            recorded as proof of signing.
+            I have read this document and agree to sign it electronically. I agree that the time, my IP address, my device details and my location (with the street address it points to) are
+            recorded and shared with the sender as proof of signing.
           </span>
         </label>
 

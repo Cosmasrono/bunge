@@ -1,42 +1,44 @@
 import "server-only";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
-import { randomBytes } from "node:crypto";
+import { getDb } from "@/db";
 
 /**
- * File storage for uploaded and signed PDFs. Today this is a folder on the machine running the app
- * (outside the project, so dev reloads and OneDrive don't touch it). Online hosting such as Vercel has
- * no permanent disk, so this is the one module to swap for Vercel Blob / S3 / R2 later.
+ * File storage for uploaded and signed PDFs: the `stored_files` collection in the app's MongoDB database.
+ * That works the same on your PC and on hosting without a permanent disk (Vercel), and is backed up with the data.
+ *
+ * Files saved by older versions of the app lived in a folder on the PC (DOCS_DIR, default ~/.nation-desk/documents);
+ * they are still read from there when a file isn't in the database.
  */
 const KEY_PATTERN = /^[a-f0-9]{32}\.pdf$/;
 
-function dir() {
-  if (process.env.VERCEL) {
-    throw new Error("Document storage isn't set up for online hosting yet. Run the app on your own computer, or add cloud file storage.");
-  }
-  return process.env.DOCS_DIR || path.join(homedir(), ".nation-desk", "documents");
-}
-
-function pathFor(key: string) {
+function checkKey(key: string) {
   if (!KEY_PATTERN.test(key)) throw new Error("Invalid file key");
-  return path.join(dir(), key);
 }
 
 export function newFileKey() {
   return `${randomBytes(16).toString("hex")}.pdf`;
 }
 
+/** Saves a new file. Keys are random and unique; an existing key is never overwritten (the unique index refuses it). */
 export async function putFile(key: string, bytes: Uint8Array) {
-  const target = pathFor(key);
-  await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, bytes, { flag: "wx" }); // never overwrite an existing file
+  checkKey(key);
+  await getDb().storedFile.create({ data: { key, data: Buffer.from(bytes), size: bytes.length } });
 }
 
-export async function getFile(key: string) {
-  return readFile(pathFor(key));
+export async function getFile(key: string): Promise<Buffer> {
+  checkKey(key);
+  const row = await getDb().storedFile.findUnique({ where: { key }, select: { data: true } });
+  if (row) return Buffer.from(row.data);
+  // Older documents saved on the PC's disk.
+  if (process.env.VERCEL) throw new Error("File not found");
+  const dir = process.env.DOCS_DIR || path.join(homedir(), ".nation-desk", "documents");
+  return readFile(path.join(dir, key));
 }
 
 export async function deleteFile(key: string) {
-  await rm(pathFor(key), { force: true });
+  checkKey(key);
+  await getDb().storedFile.deleteMany({ where: { key } });
 }

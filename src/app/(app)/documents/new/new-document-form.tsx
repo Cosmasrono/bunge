@@ -4,19 +4,23 @@ import { FileUp, FileText } from "lucide-react";
 import { useActionState, useState } from "react";
 import { createDocument } from "@/app/actions/documents";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
+import { SignatureBoxPicker } from "./signature-box-picker";
 
 type Signer = { id: string; name: string; email: string; role: string };
 
-export function NewDocumentForm({ signers, meId }: { signers: Signer[]; meId: string }) {
+export function NewDocumentForm({ signers, meId, maxBytes }: { signers: Signer[]; meId: string; maxBytes: number }) {
+  const maxLabel = `${Math.round((maxBytes / 1024 / 1024) * 10) / 10} MB`;
+  const [sizeError, setSizeError] = useState("");
   const [state, action] = useActionState(createDocument, undefined);
   const [fileName, setFileName] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [blank, setBlank] = useState(false);
   const [self, setSelf] = useState(false);
   const f = state?.fields;
 
   return (
     <form action={action} className="card space-y-5 p-5 sm:p-6">
-      <FormMessage error={state?.error} />
+      <FormMessage error={sizeError || state?.error} />
 
       <label className="flex items-start gap-3 rounded-xl bg-surface-2/60 px-4 py-3 text-sm">
         <input
@@ -35,7 +39,7 @@ export function NewDocumentForm({ signers, meId }: { signers: Signer[]; meId: st
       </label>
 
       {!blank && (
-        <Field label="PDF file" htmlFor="file" hint="PDF only, up to 10 MB, not password-protected.">
+        <Field label="PDF file" htmlFor="file" hint={`PDF only, up to ${maxLabel}, not password-protected.`}>
           <label
             htmlFor="file"
             className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-surface-2/60 px-4 py-4 text-sm transition-colors hover:border-primary hover:bg-primary-soft/40 focus-within:ring-4 focus-within:ring-(--ring)"
@@ -54,11 +58,22 @@ export function NewDocumentForm({ signers, meId }: { signers: Signer[]; meId: st
               accept="application/pdf,.pdf"
               required
               className="sr-only"
-              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
+              onChange={(e) => {
+                let chosen = e.target.files?.[0] ?? null;
+                if (chosen && chosen.size > maxBytes) {
+                  setSizeError(`"${chosen.name}" is too large (${Math.round((chosen.size / 1024 / 1024) * 10) / 10} MB). The limit is ${maxLabel}. Try a smaller or compressed PDF.`);
+                  e.target.value = "";
+                  chosen = null;
+                } else setSizeError("");
+                setFileName(chosen?.name ?? "");
+                setFile(chosen);
+              }}
             />
           </label>
         </Field>
       )}
+
+      <SignatureBoxPicker file={blank ? null : file} blank={blank} />
 
       <Field label="Title" htmlFor="title">
         <input id="title" name="title" required maxLength={150} className="input" placeholder="e.g. Q4 budget approval" defaultValue={f?.title} />

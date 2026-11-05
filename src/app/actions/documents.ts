@@ -8,7 +8,9 @@ import { allowAttempt, audit, clientInfo } from "@/lib/auth/request";
 import { requireUser } from "@/lib/auth/session";
 import { APP_URL, mailConfigured, sendEmail } from "@/lib/mail";
 import { parseEvidence } from "@/lib/evidence";
-import { buildSignedPdf, canTypeSignature, createBlankPdf, inspectPdf, MAX_PDF_BYTES, sha256Hex } from "@/lib/pdf";
+import { parseSignatureBox } from "@/lib/signature-box";
+import { ipPlaceFromHeaders, reverseGeocode, type Place } from "@/lib/geo";
+import { buildSignedPdf, canTypeSignature, createBlankPdf, formatMb, inspectPdf, sha256Hex, uploadLimitBytes } from "@/lib/pdf";
 import { deleteFile, getFile, newFileKey, putFile } from "@/lib/storage";
 import type { FormState } from "./auth";
 
@@ -48,7 +50,7 @@ export async function createDocument(_: FormState, form: FormData): Promise<Form
   const file = form.get("file");
   if (!blank) {
     if (!(file instanceof File) || file.size === 0) return { error: 'Choose a PDF to upload, or tick "Use a blank page".', fields };
-    if (file.size > MAX_PDF_BYTES) return { error: `That file is too large. The limit is ${MAX_PDF_BYTES / 1024 / 1024} MB.`, fields };
+    if (file.size > uploadLimitBytes()) return { error: `That file is too large. The limit is ${formatMb(uploadLimitBytes())}.`, fields };
   }
 
   const db = getDb();
@@ -65,6 +67,10 @@ export async function createDocument(_: FormState, form: FormData): Promise<Form
     return { error: (err as Error).message, fields };
   }
 
+  // Where the signature goes (optional). Marked on the page preview; checked against the real page count.
+  const signatureBox = parseSignatureBox(String(form.get("signatureBox") ?? ""));
+  if (signatureBox && signatureBox.page >= pageCount) return { error: "The signature box is on a page this PDF doesn't have. Mark it again.", fields };
+
   const fileKey = newFileKey();
   let id: string;
   try {
@@ -78,6 +84,7 @@ export async function createDocument(_: FormState, form: FormData): Promise<Form
         fileKey,
         fileHash: sha256Hex(bytes),
         pageCount,
+        signatureBox: signatureBox ?? undefined,
         senderId: user.id,
         signerId: signer.id,
       },
@@ -87,7 +94,7 @@ export async function createDocument(_: FormState, form: FormData): Promise<Form
   } catch (err) {
     console.error("[documents] could not save", err);
     await deleteFile(fileKey).catch(() => {});
-    return { error: err instanceof Error && err.message.includes("storage") ? err.message : "We couldn't save the document. Please try again.", fields };
+    return { error: "We couldn't save the document. Please try again.", fields };
   }
 
   await audit("document_sent", user.id, `${id} to ${signer.id}`);
@@ -148,6 +155,11 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
   }
 
   const { ip, userAgent } = await clientInfo();
+  // Turn the GPS point and the IP address into places in words (stored, shown to the sender, printed on the certificate).
+  const place: Place = {
+    ...(await ipPlaceFromHeaders()),
+    address: evidence.geo ? await reverseGeocode(evidence.geo.lat, evidence.geo.lon) : undefined,
+  };
   const signedKey = newFileKey();
   try {
     const original = new Uint8Array(await getFile(doc.fileKey));
@@ -167,7 +179,10 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
       ip,
       agent: userAgent,
       evidence,
+      place,
       signature,
+      box: parseSignatureBox(doc.signatureBox),
+      reference: doc.id.slice(-8).toUpperCase(),
     });
     await putFile(signedKey, signed);
     // Only one response can win: this updates the document only while it is still pending.
@@ -182,6 +197,7 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
         signerIp: ip,
         signerAgent: userAgent,
         signerEvidence: evidence,
+        signerPlace: JSON.parse(JSON.stringify(place)),
       },
     });
     if (!count) {

@@ -176,6 +176,9 @@ Admins and directors can send documents to each other (and to themselves, to try
 
 1. **Documents → Send a document**: upload a PDF (up to 10 MB, not password-protected), choose who should sign it
    and add an optional message. The person gets an email.
+   **Mark where the signature goes:** the form shows the PDF's pages; pick the page and click the signature line
+   (Small / Medium / Large sets the size). The signature is then stamped exactly there, with a small
+   "Signed electronically by … · see last page" line under it. Pages turned sideways aren't supported for this.
 2. They open **Documents**, read the PDF, then **draw or type** their signature, tick the consent box and submit.
    They can also decline and give a reason.
 3. The app adds a **signature certificate page** to the PDF (signer, time, IP address and a SHA-256 fingerprint of
@@ -184,10 +187,12 @@ Admins and directors can send documents to each other (and to themselves, to try
 
 Only the sender and the signer can open a document. Everything is recorded in the audit log.
 
-- Files are stored in `C:\Users\<you>\.nation-desk\documents\` (change with `DOCS_DIR` in `.env`). Back this folder up
-  together with the database. The database only keeps the details, not the PDFs.
-- **Online hosting (Vercel) is not supported yet** for documents: Vercel has no permanent disk. File storage lives in
-  `src/lib/storage.ts`, the one file to swap for cloud storage (Vercel Blob, S3 or R2) later.
+- The PDFs (original and signed) are stored **in the MongoDB database** (`stored_files` collection), so documents work the
+  same on your PC and on Vercel, and are included when you back up the database. Run `npm run db:push` once after updating.
+- Upload limit: **10 MB** on your PC, **4 MB** on Vercel (Vercel refuses requests over 4.5 MB). MongoDB Atlas's free tier
+  holds 512 MB in total, which is plenty for typical PDFs (100 KB to 2 MB each); move to a paid tier if you store many large files.
+- Documents created by an older version on your PC (saved in `C:\Users\<you>\.nation-desk\documents\`) still open on
+  that PC. File storage lives in `src/lib/storage.ts` if you later want Vercel Blob, S3 or R2 instead.
 - **Signing details are recorded as proof**, with the signer's consent (a tick box before signing): the time and IP address
   (recorded by the server), and the browser, device info, time zone, a per-device ID and the GPS **location** (reported by the
   signer's device; the browser asks permission). They are printed on the certificate page and shown under *How it was signed*.

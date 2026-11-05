@@ -14,7 +14,7 @@
     "image:landing": "node scripts/landing-image.mjs",
     "push:keys": "web-push generate-vapid-keys",
     "test": "tsx src/lib/time.test.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.2",
@@ -23,6 +23,7 @@
     "next": "16.4.5",
     "nodemailer": "^10.3.1",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.5.438",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
