@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "@/db";
 import { APP_NAME, APP_URL, sendEmail } from "@/lib/mail";
 import { randomToken, sha256 } from "./crypto";
+import { UNUSED_RESET } from "./reset";
 
 export const INVITE_HOURS = 48;
 
@@ -22,7 +23,8 @@ export async function sendSetPasswordLink(
 ) {
   const db = getDb();
   const token = randomToken(32);
-  await db.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+  // Any earlier link stops working.
+  await db.passwordReset.updateMany({ where: { userId: user.id, ...UNUSED_RESET }, data: { usedAt: new Date() } });
   const created = await db.passwordReset.create({
     data: { userId: user.id, tokenHash: sha256(token), purpose: kind, expiresAt: new Date(Date.now() + INVITE_HOURS * 3_600_000) },
     select: { id: true },

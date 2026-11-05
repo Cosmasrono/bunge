@@ -202,6 +202,8 @@ model Document {
   signerAgent   String?
   /// What the signer's device reported when signing (see src/lib/evidence.ts): location, device info, device id.
   signerEvidence Json?
+  /// Worked out by the server when signing (see src/lib/geo.ts): street address for the GPS point, and the IP's city/country.
+  signerPlace    Json?
 
   @@index([signerId, status])
   @@index([senderId, createdAt])

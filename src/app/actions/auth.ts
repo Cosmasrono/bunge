@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { checkPassword, hashPassword, passwordProblem, randomToken, sha256 } from "@/lib/auth/crypto";
 import { allowAttempt, audit, clearAttempts, clientInfo } from "@/lib/auth/request";
-import { findValidReset } from "@/lib/auth/reset";
+import { findValidReset, UNUSED_RESET } from "@/lib/auth/reset";
 import { resendSignupCode, startSignup, verifySignupCode } from "@/lib/auth/signup";
 import {
   createSession,
@@ -157,7 +157,7 @@ export async function requestReset(_: FormState, form: FormData): Promise<FormSt
   const user = await db.user.findUnique({ where: { email: parsed.data } });
   if (user && mailConfigured()) {
     const token = randomToken(32);
-    await db.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+    await db.passwordReset.updateMany({ where: { userId: user.id, ...UNUSED_RESET }, data: { usedAt: new Date() } });
     await db.passwordReset.create({
       data: {
         userId: user.id,
