@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { describeAgent, describeGeo, type Evidence } from "@/lib/evidence";
 import { PDFDocument, rgb, StandardFonts, type PDFFont } from "pdf-lib";
 
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -64,6 +65,8 @@ export async function buildSignedPdf(opts: {
   signedAt: Date;
   timezone: string;
   ip: string;
+  agent: string;
+  evidence: Evidence;
   signature: SignatureInput;
 }) {
   const pdf = await PDFDocument.load(opts.original, { updateMetadata: false });
@@ -128,10 +131,28 @@ export async function buildSignedPdf(opts: {
     while (size > 14 && script.widthOfTextAtSize(text, size) > 280) size -= 2;
     page.drawText(text, { x: left + 10, y: y - boxH / 2 - size / 3, size, font: script, color: ink });
   }
-  y -= boxH + 36;
+  y -= boxH + 30;
+
+  // What the signer's device reported, with their consent (the server records the time and IP address itself).
+  page.drawText("SIGNING DETAILS", { x: left, y, size: 8, font: bold, color: muted });
+  y -= 16;
+  const ev = opts.evidence;
+  const details: [string, string][] = [
+    ["Browser", describeAgent(opts.agent)],
+    ["Device", [ev.platform, ev.screen, ev.touch === undefined ? "" : ev.touch ? "touch screen" : "no touch screen", ev.language].filter(Boolean).join("  |  ") || "Not reported"],
+    ["Device ID", ev.deviceId ?? "Not reported"],
+    ["Device time zone", ev.timezone ?? "Not reported"],
+    ["Location", describeGeo(ev)],
+  ];
+  for (const [label, value] of details) {
+    page.drawText(label, { x: left, y, size: 9.5, font: bold, color: muted });
+    page.drawText(fit(value, regular, 9.5, width - 110), { x: left + 110, y, size: 9.5, font: regular, color: ink });
+    y -= 17;
+  }
+  y -= 14;
 
   const notice =
-    "The signer confirmed they agree to sign this document electronically. The fingerprint above identifies the " +
+    "The signer confirmed they agree to sign this document electronically and to record these details. Time and IP address were recorded by the server; location and device details were reported by the signer's device. The fingerprint above identifies the " +
     "exact original file that was shown to the signer; any change to that file produces a different fingerprint.";
   let line = "";
   for (const w of notice.split(" ")) {

@@ -16,7 +16,9 @@ export default async function ResetPage({ params }: PageProps<"/reset/[token]">)
           <LinkIcon className="size-5" />
         </span>
         <h1 className="mt-5 text-2xl font-semibold tracking-tight">This link has expired</h1>
-        <p className="mt-2 text-[15px] text-muted">Reset links work once and only for 1 hour. You can ask for a new one.</p>
+        <p className="mt-2 text-[15px] text-muted">
+          Links work once and expire after a while. If you were invited, ask your admin to send the invitation again. Otherwise you can request a new reset link.
+        </p>
         <Link href="/forgot" className="btn-primary mt-8 w-full">
           Send a new link
         </Link>
@@ -25,8 +27,12 @@ export default async function ResetPage({ params }: PageProps<"/reset/[token]">)
   }
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Choose a new password</h1>
-      <p className="mt-1.5 text-[15px] text-muted">For {found.email}</p>
+      <h1 className="text-2xl font-semibold tracking-tight">
+        {found.purpose === "invite" ? `Welcome, ${found.name.split(" ")[0]}` : "Choose a new password"}
+      </h1>
+      <p className="mt-1.5 text-[15px] text-muted">
+        {found.purpose === "invite" ? `Choose a password to activate your account. You will sign in with ${found.email}.` : `For ${found.email}`}
+      </p>
       <ResetForm token={token} />
     </>
   );

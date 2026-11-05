@@ -103,7 +103,7 @@ export function renderEmail({ heading, lines, code, details = [], button, footer
 ${lines.map((l) => `<p style="margin:0 0 12px;color:#344054;font-size:15px;line-height:1.55">${esc(l)}</p>`).join("")}
 ${code ? `<p style="margin:20px 0;text-align:center"><span style="display:inline-block;background:#eef0ff;color:#1d2330;border-radius:12px;padding:14px 22px;font:700 32px/1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:10px">${esc(code)}</span></p>` : ""}
 ${rows ? `<table role="presentation" style="margin:8px 0 4px;border-collapse:collapse">${rows}</table>` : ""}
-${button ? `<p style="margin:22px 0 8px"><a href="${esc(button.url)}" style="background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:9px;font-weight:600;display:inline-block;font-size:14px">${esc(button.text)}</a></p>` : ""}
+${button ? `<p style="margin:22px 0 8px"><a href="${esc(button.url)}" style="background:#7a4527;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:9px;font-weight:600;display:inline-block;font-size:14px">${esc(button.text)}</a></p>` : ""}
 ${footer ? `<p style="margin:18px 0 0;color:#98a2b3;font-size:12px">${esc(footer)}</p>` : ""}
 </td></tr></table>
 <p style="color:#98a2b3;font-size:11px;margin:14px 0 0">Sent by ${esc(APP_NAME)}</p>

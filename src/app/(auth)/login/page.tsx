@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
+import { signupOpen } from "@/lib/auth/invite";
 import { getCurrentUser } from "@/lib/auth/session";
 import { LoginForm } from "./login-form";
 
@@ -18,10 +19,16 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <p className="mt-1.5 text-[15px] text-muted">Sign in to see your schedule.</p>
       <LoginForm next={typeof next === "string" ? next : "/"} />
       <p className="mt-8 text-center text-sm text-muted">
-        New here?{" "}
-        <Link href="/signup" className="font-semibold text-primary hover:underline">
-          Create an account
-        </Link>
+        {signupOpen() ? (
+          <>
+            New here?{" "}
+            <Link href="/signup" className="font-semibold text-primary hover:underline">
+              Create an account
+            </Link>
+          </>
+        ) : (
+          "Accounts are created by your administrator. Check your email for an invitation."
+        )}
       </p>
     </>
   );

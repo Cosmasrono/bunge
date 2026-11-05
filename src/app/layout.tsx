@@ -10,14 +10,16 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: { default: process.env.APP_NAME || "Nation Desk", template: `%s · ${process.env.APP_NAME || "Nation Desk"}` },
-  description: "Your schedule, with reminders by email.",
+  description: "Your schedule, with reminders by email and notification.",
   robots: { index: false, follow: false },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
+  appleWebApp: { capable: true, title: process.env.APP_NAME || "Nation Desk", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d1017" },
+    { media: "(prefers-color-scheme: light)", color: "#faf6f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1210" },
   ],
 };
 

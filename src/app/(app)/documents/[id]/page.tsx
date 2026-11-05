@@ -7,6 +7,7 @@ import { cancelDocument } from "@/app/actions/documents";
 import { ConfirmSubmit, Flash } from "@/components/client-bits";
 import { requireUser } from "@/lib/auth/session";
 import { getDocumentFor, STATUS_LABEL } from "@/lib/documents";
+import { describeAgent, describeGeo, mapLink, parseEvidence } from "@/lib/evidence";
 import { SignPanel } from "./sign-panel";
 
 export const metadata: Metadata = { title: "Document" };
@@ -105,6 +106,8 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
         </div>
       </section>
 
+      {doc.status === "signed" && <SigningDetails doc={doc} fmt={fmt} />}
+
       <section className="card overflow-hidden">
         <iframe
           src={`${file}?v=${view}#view=FitH`}
@@ -113,7 +116,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
         />
       </section>
 
-      {isSigner && doc.status === "pending" && <SignPanel documentId={doc.id} signerName={user.name} />}
+      {isSigner && doc.status === "pending" && <SignPanel documentId={doc.id} signerName={user.name} requireLocation={process.env.REQUIRE_SIGNER_LOCATION === "true"} />}
 
       {isSender && !isSigner && doc.status === "pending" && (
         <p className="flex items-center gap-2 text-sm text-muted">
@@ -121,6 +124,39 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
         </p>
       )}
     </div>
+  );
+}
+
+function SigningDetails({ doc, fmt }: { doc: NonNullable<Awaited<ReturnType<typeof getDocumentFor>>>; fmt: Intl.DateTimeFormat }) {
+  const ev = parseEvidence(JSON.stringify(doc.signerEvidence ?? null));
+  const map = mapLink(ev);
+  const device = [ev.platform, ev.screen, ev.language].filter(Boolean).join(" · ");
+  return (
+    <section className="card p-5 sm:p-6">
+      <h2 className="flex items-center gap-2 font-semibold">
+        <ShieldCheck className="size-4 text-faint" /> How it was signed
+      </h2>
+      <dl className="mt-4 grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+        <Item label="Signed at" value={doc.respondedAt ? fmt.format(doc.respondedAt) : "-"} sub="Recorded by the server" />
+        <Item label="IP address" value={doc.signerIp ?? "Not recorded"} sub="Recorded by the server" />
+        <Item label="Browser" value={describeAgent(doc.signerAgent)} sub="Recorded by the server" />
+        <Item label="Device" value={device || "Not reported"} sub={ev.touch === undefined ? undefined : ev.touch ? "Touch screen" : "No touch screen"} />
+        <Item label="Device ID" value={ev.deviceId ?? "Not reported"} sub="Random ID kept in the signer's browser" />
+        <Item label="Device time zone" value={ev.timezone ?? "Not reported"} />
+        <div className="min-w-0 sm:col-span-2">
+          <dt className="text-xs font-medium text-faint">Location</dt>
+          <dd className="mt-0.5 font-medium break-words">{describeGeo(ev)}</dd>
+          {map && (
+            <dd className="text-xs">
+              <a href={map} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">
+                View on a map
+              </a>
+            </dd>
+          )}
+        </div>
+      </dl>
+      <p className="mt-4 text-xs text-faint">Location and device details are reported by the signer&apos;s device with their consent. Time and IP address are recorded by the server.</p>
+    </section>
   );
 }
 

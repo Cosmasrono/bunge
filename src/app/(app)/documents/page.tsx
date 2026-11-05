@@ -80,9 +80,9 @@ function Section({ title, count, highlight, children }: { title: string; count: 
     <section>
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted">
         {title}
-        <span className={`rounded-full px-2 py-0.5 text-xs ${highlight ? "bg-primary text-primary-text" : "bg-surface-2"}`}>{count}</span>
+        <span className={`rounded-full px-2 py-0.5 text-xs ${highlight ? "bg-accent text-accent-text" : "bg-surface-2"}`}>{count}</span>
       </h2>
-      <ul className={`card divide-y divide-border overflow-hidden ${highlight ? "ring-2 ring-primary/25" : ""}`}>{children}</ul>
+      <ul className={`card divide-y divide-border overflow-hidden ${highlight ? "ring-2 ring-accent/30" : ""}`}>{children}</ul>
     </section>
   );
 }
@@ -101,7 +101,7 @@ function DocRow({ doc, line, date, action }: { doc: Row; line: string; date: str
           </span>
         </span>
         {action ? (
-          <span className="chip bg-primary text-primary-text">
+          <span className="chip bg-accent text-accent-text">
             <PenLine className="size-3" /> Sign
           </span>
         ) : (

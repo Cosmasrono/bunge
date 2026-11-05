@@ -15,6 +15,7 @@ import {
   requireUser,
 } from "@/lib/auth/session";
 import { APP_NAME, APP_URL, mailConfigured, sendEmail } from "@/lib/mail";
+import { signupOpen } from "@/lib/auth/invite";
 import { DEFAULT_TZ, isValidTimeZone } from "@/lib/time";
 
 export type FormState = { error?: string; ok?: string; fields?: Record<string, string> } | undefined;
@@ -84,7 +85,7 @@ const signupSchema = z.object({
 });
 
 /** Shared by public sign-up and first-time admin setup: validate, then email a code. */
-async function beginSignup(form: FormData, role: "admin" | "manager"): Promise<FormState> {
+async function beginSignup(form: FormData, role: "admin" | "director"): Promise<FormState> {
   const fields = { name: String(form.get("name") ?? "").slice(0, 100), email: String(form.get("email") ?? "").slice(0, 200) };
   if (!mailConfigured()) {
     return { error: "Email isn't set up on the server yet, so we can't send a verification code. Please contact the administrator.", fields };
@@ -115,7 +116,8 @@ async function beginSignup(form: FormData, role: "admin" | "manager"): Promise<F
 
 export async function signup(_: FormState, form: FormData): Promise<FormState> {
   if ((await getDb().user.count()) === 0) redirect("/setup"); // the very first account must be the admin
-  return beginSignup(form, "manager");
+  if (!signupOpen()) redirect("/login"); // accounts are created by an admin (Team page)
+  return beginSignup(form, "director");
 }
 
 export async function verifySignup(_: FormState, form: FormData): Promise<FormState> {
@@ -191,7 +193,7 @@ export async function resetPassword(_: FormState, form: FormData): Promise<FormS
   if (problem) return { error: problem };
 
   const db = getDb();
-  await db.user.update({ where: { id: found.userId }, data: { passwordHash: await hashPassword(password) } });
+  await db.user.update({ where: { id: found.userId }, data: { passwordHash: await hashPassword(password), lastLoginAt: new Date() } });
   await db.passwordReset.update({ where: { id: found.resetId }, data: { usedAt: new Date() } });
   await destroyOtherSessions(found.userId); // sign out everywhere
   await createSession(found.userId);

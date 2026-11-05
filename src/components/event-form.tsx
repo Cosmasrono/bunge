@@ -26,6 +26,8 @@ export function EventForm({
   quickDates,
   submitLabel,
   timezone,
+  people,
+  forDefault,
 }: {
   action: (state: FormState, form: FormData) => Promise<FormState>;
   initial: EventFormValues;
@@ -34,6 +36,9 @@ export function EventForm({
   quickDates: { label: string; date: string }[];
   submitLabel: string;
   timezone: string;
+  /** Admins adding a new event: who's schedule it goes on (defaults to themselves). */
+  people?: { id: string; name: string; role: string }[];
+  forDefault?: string;
 }) {
   const [state, formAction] = useActionState(action, undefined);
   const f = state?.fields;
@@ -48,6 +53,20 @@ export function EventForm({
       <FormMessage error={state?.error} />
 
       <div className="card space-y-5 p-5 sm:p-6">
+        {people && (
+          <Field label="Whose schedule?" htmlFor="forUserId" hint="They get the reminders and see it in their schedule. Its time is in their time zone.">
+            <select id="forUserId" name="forUserId" className="input" defaultValue={f?.forUserId ?? forDefault ?? ""}>
+              <option value="" className="bg-surface text-text">
+                Mine
+              </option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id} className="bg-surface text-text">
+                  {p.name} ({p.role})
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="What" htmlFor="title">
           <input
             id="title"
@@ -113,8 +132,8 @@ export function EventForm({
               <BellRing className="size-4.5" />
             </span>
             <span>
-              <span className="block font-semibold">Email reminders</span>
-              <span className="block text-sm text-muted">We&apos;ll email you before it starts.</span>
+              <span className="block font-semibold">Reminders</span>
+              <span className="block text-sm text-muted">By email, and as a notification on phones and computers that turned it on.</span>
             </span>
           </span>
           <input type="checkbox" name="emailReminders" checked={remind} onChange={(e) => setRemind(e.target.checked)} className="peer sr-only" />
@@ -126,7 +145,7 @@ export function EventForm({
 
         {remind && (
           <fieldset className="mt-5">
-            <legend className="mb-2.5 text-sm font-medium">Remind me</legend>
+            <legend className="mb-2.5 text-sm font-medium">Remind</legend>
             <div className="flex flex-wrap gap-2">
               {leadOptions.map((o) => {
                 const on = leads.includes(o.minutes);

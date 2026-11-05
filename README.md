@@ -81,6 +81,7 @@ You need three free accounts: **GitHub**, **Vercel**, and **MongoDB Atlas**.
    | Name | Value |
    |---|---|
    | `DATABASE_URL` | your MongoDB Atlas connection string, including the database name |
+   | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | from `npm run push:keys` (phone/computer notifications) |
    | `APP_URL` | your site address, e.g. `https://nation-desk.vercel.app` |
    | `APP_TIMEZONE` | `Africa/Nairobi` |
    | `CRON_SECRET` | a long random string (at least 16 characters) |
@@ -108,10 +109,70 @@ Without the correct secret the URL answers `401 Unauthorized`, so nobody else ca
 
 ---
 
+## Look and sign-in background
+
+Brown is the brand colour and pink the accent (colour tokens at the top of `src/app/globals.css`; light and dark mode
+both meet WCAG AA text contrast). The sign-in pages sit on a full-screen background under a dark overlay. Until a photo is
+set, it is a brown-to-pink gradient.
+
+To use a photo (one you took, or one licensed for reuse):
+
+```bash
+npm run image:landing -- "C:path	ophoto.jpg" --credit "Photo: Name, CC BY-SA 4.0" --alt "Bunge Tower, Nairobi"
+```
+
+This makes a compressed WebP (about 200 to 450 KB for desktop, a smaller one for phones) in `public/images/`, and shows the
+`--credit` line on the page. Creative Commons photos need that credit; leave it out only for your own photo.
+
+## People, roles and invitations
+
+There are two roles:
+
+- **Admin**: creates accounts on the **Team** page, can add events to anyone's schedule, can open and edit anyone's events,
+  and sees **Settings**. The first account (created on the setup page) is an admin.
+- **Director**: sees and manages their own schedule. Events an admin adds for them show up in their schedule with
+  "Added by …", and they get the reminders. They can change or turn off reminders on any event on their schedule.
+
+**Adding a person:** an admin opens **Team**, enters name, email and role. The person gets an email with a one-time link
+(valid for 48 hours). The link opens a page where they choose their own password and are signed in. **No password is ever
+emailed.** The same page handles forgotten passwords: **Resend invite** / **Send reset link** on the Team page sends a fresh link.
+
+Public sign-up is **off** by default, because accounts are created by an admin. To let anyone register themselves
+(they become directors), set `ALLOW_PUBLIC_SIGNUP=true`.
+
+**Admin viewing a director's schedule:** on the Schedule page, the admin sees a row of names above the events. Pick a
+director to see their schedule, and **New event** then adds to theirs. When creating an event you can also choose
+*Whose schedule?* from the form.
+
+## Notifications (phone and computer pop-ups)
+
+Reminders go out two ways: a **push notification** to every phone or computer the person turned it on for, and an
+**email** (the backup, and the only way for people who didn't turn notifications on). Tapping a notification opens the event.
+
+Set up once (admin):
+
+1. Create a key pair and put both lines in `.env` (and in Vercel's environment variables):
+   ```bash
+   npm run push:keys
+   ```
+   `VAPID_PUBLIC_KEY=...` and `VAPID_PRIVATE_KEY=...`. Optionally set `VAPID_SUBJECT` to `mailto:you@yourcompany.com`
+   (push services use it to contact you about misuse; Apple's service can reject made-up addresses).
+2. Each person opens **Account → Notifications → Turn on notifications** on each device they want pop-ups on, and allows the browser question.
+
+Good to know:
+
+- Notifications need **HTTPS**. They work on `http://localhost` on the computer running the app, but a phone can only use them
+  once the app is online (for example on Vercel) or reachable through an HTTPS address.
+- **iPhone**: Apple only allows notifications for sites added to the Home Screen (iOS 16.4 or newer). In Safari tap
+  Share → **Add to Home Screen**, open Nation Desk from the new icon, then turn notifications on. The Account page tells iPhone users this.
+- Reminders are checked about every minute by a scheduled job (see *Reminders every minute* above). On your own PC, the built-in
+  checker runs every 30 seconds while `npm run dev` / `npm start` is running, so the computer must be on. Online, use the cron
+  URL with `CRON_SECRET`.
+- If a device stops being reachable (the app was uninstalled, permissions removed), it is dropped automatically.
+
 ## Documents (send a PDF to be signed)
 
-Two roles: the first account is the **admin**; everyone who signs up afterwards is a **manager**. Admins and
-managers can send documents to each other.
+Admins and directors can send documents to each other (and to themselves, to try it out).
 
 1. **Documents → Send a document**: upload a PDF (up to 10 MB, not password-protected), choose who should sign it
    and add an optional message. The person gets an email.
@@ -127,6 +188,11 @@ Only the sender and the signer can open a document. Everything is recorded in th
   together with the database. The database only keeps the details, not the PDFs.
 - **Online hosting (Vercel) is not supported yet** for documents: Vercel has no permanent disk. File storage lives in
   `src/lib/storage.ts`, the one file to swap for cloud storage (Vercel Blob, S3 or R2) later.
+- **Signing details are recorded as proof**, with the signer's consent (a tick box before signing): the time and IP address
+  (recorded by the server), and the browser, device info, time zone, a per-device ID and the GPS **location** (reported by the
+  signer's device; the browser asks permission). They are printed on the certificate page and shown under *How it was signed*.
+  A **MAC address cannot be collected**: browsers can't read it and it never leaves the local network. The device ID is the substitute.
+  Set `REQUIRE_SIGNER_LOCATION=true` to refuse signing when location is declined.
 - This is a simple electronic signature (a confirmed, logged-in user who agreed to sign), fine for everyday approvals.
   It is not a certified digital signature.
 - After updating the code, run `npm run db:push` once to create the `documents` collection.
@@ -158,6 +224,7 @@ Only the sender and the signer can open a document. Everything is recorded in th
 | `npm run dev` | Run on your PC |
 | `npm run typecheck` / `npm run lint` | Check the code |
 | `npm test` | Check the time-zone and repeat logic |
+| `npm run push:keys` | Print a new key pair for phone/computer notifications |
 | `npm run db:push` | Create/update collections and indexes after changing `prisma/schema.prisma` |
 | `npm run db:generate` | Regenerate the Prisma client (also runs on `npm install` and `npm run build`) |
 | `npm run db:studio` | Browse the data in Prisma Studio |

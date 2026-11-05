@@ -7,6 +7,7 @@ import { getDb, isObjectId } from "@/db";
 import { allowAttempt, audit, clientInfo } from "@/lib/auth/request";
 import { requireUser } from "@/lib/auth/session";
 import { APP_URL, mailConfigured, sendEmail } from "@/lib/mail";
+import { parseEvidence } from "@/lib/evidence";
 import { buildSignedPdf, canTypeSignature, createBlankPdf, inspectPdf, MAX_PDF_BYTES, sha256Hex } from "@/lib/pdf";
 import { deleteFile, getFile, newFileKey, putFile } from "@/lib/storage";
 import type { FormState } from "./auth";
@@ -140,6 +141,12 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
   }
   if (!(await allowAttempt(`docsign:${user.id}`, 30, 3600))) return { error: "Too many attempts. Please wait a while." };
 
+  // Details the signer's device reported (location, device). Optional unless the admin set REQUIRE_SIGNER_LOCATION=true.
+  const evidence = parseEvidence(form.get("evidence"));
+  if (process.env.REQUIRE_SIGNER_LOCATION === "true" && !evidence.geo) {
+    return { error: "Allow location access in your browser to sign this document, then try again." };
+  }
+
   const { ip, userAgent } = await clientInfo();
   const signedKey = newFileKey();
   try {
@@ -158,6 +165,8 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
       signedAt,
       timezone: user.timezone,
       ip,
+      agent: userAgent,
+      evidence,
       signature,
     });
     await putFile(signedKey, signed);
@@ -172,6 +181,7 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
         signatureKind: signature.kind,
         signerIp: ip,
         signerAgent: userAgent,
+        signerEvidence: evidence,
       },
     });
     if (!count) {

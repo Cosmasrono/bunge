@@ -12,7 +12,7 @@ datasource db {
 
 enum Role {
   admin
-  manager
+  director
 }
 
 enum DocumentStatus {
@@ -34,7 +34,7 @@ model User {
   id           String    @id @default(auto()) @map("_id") @db.ObjectId
   email        String    @unique // always stored lower-case
   name         String
-  role         Role      @default(manager)
+  role         Role      @default(director)
   passwordHash String
   timezone     String    @default("Africa/Nairobi")
   createdAt    DateTime  @default(now())
@@ -46,6 +46,7 @@ model User {
   auditLogs      AuditLog[]
   sentDocuments  Document[] @relation("DocumentSender")
   signDocuments  Document[] @relation("DocumentSigner")
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -70,6 +71,8 @@ model PasswordReset {
   userId    String    @db.ObjectId
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash String    @unique
+  /// "reset" (forgot password) or "invite" (an admin created the account).
+  purpose   String    @default("reset")
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
@@ -84,7 +87,7 @@ model PendingSignup {
   email        String
   name         String
   passwordHash String
-  role         Role     @default(manager)
+  role         Role     @default(director)
   codeHash     String
   attempts     Int      @default(0)
   sends        Int      @default(1)
@@ -122,6 +125,8 @@ model Event {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   userId         String   @db.ObjectId
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Who added the event: the owner, or an admin adding it to someone else's schedule.
+  createdById    String?  @db.ObjectId
   title          String
   location       String   @default("")
   notes          String   @default("")
@@ -195,8 +200,25 @@ model Document {
   signatureKind String?
   signerIp      String?
   signerAgent   String?
+  /// What the signer's device reported when signing (see src/lib/evidence.ts): location, device info, device id.
+  signerEvidence Json?
 
   @@index([signerId, status])
   @@index([senderId, createdAt])
   @@map("documents")
+}
+
+/// A browser or phone that agreed to get push notifications (Web Push).
+model PushSubscription {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }

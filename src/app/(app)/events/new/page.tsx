@@ -4,12 +4,16 @@ import Link from "next/link";
 import { createEvent } from "@/app/actions/events";
 import { EventForm } from "@/components/event-form";
 import { requireUser } from "@/lib/auth/session";
+import { listPeople } from "@/lib/events";
 import { eventFormOptions } from "@/lib/event-form-options";
 
 export const metadata: Metadata = { title: "New event" };
 
-export default async function NewEventPage() {
+export default async function NewEventPage({ searchParams }: PageProps<"/events/new">) {
   const user = await requireUser();
+  const people = user.role === "admin" ? await listPeople(user.id) : undefined;
+  const sp = await searchParams;
+  const forDefault = typeof sp.for === "string" && people?.some((p) => p.id === sp.for) ? sp.for : undefined;
   const o = eventFormOptions(user.timezone);
   return (
     <div className="mx-auto max-w-2xl">
@@ -24,6 +28,8 @@ export default async function NewEventPage() {
         leadOptions={o.leadOptions}
         repeatOptions={o.repeatOptions}
         quickDates={o.quickDates}
+        people={people}
+        forDefault={forDefault}
         initial={{
           title: "",
           date: o.defaults.date,

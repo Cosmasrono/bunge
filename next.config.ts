@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), payment=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
@@ -27,6 +27,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/((?!api/documents/[^/]+/file).*)", headers: [...securityHeaders, { key: "X-Frame-Options", value: "DENY" }] },
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }, { key: "Service-Worker-Allowed", value: "/" }] },
       { source: "/api/documents/:id/file", headers: [...securityHeaders, { key: "X-Frame-Options", value: "SAMEORIGIN" }] },
     ];
   },

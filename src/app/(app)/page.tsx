@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AutoRefresh, Flash } from "@/components/client-bits";
 import { requireUser } from "@/lib/auth/session";
-import { getSchedule, type ScheduleItem } from "@/lib/events";
+import { getSchedule, listPeople, type ScheduleItem } from "@/lib/events";
 import { mailConfigured } from "@/lib/mail";
 import { dayKey, dayLabel, formatTime, formatWhen, humanUntil, leadLabel, REPEAT_LABELS, utcToWall } from "@/lib/time";
 
@@ -17,10 +17,15 @@ function greeting(hour: number) {
 
 export default async function SchedulePage({ searchParams }: PageProps<"/">) {
   const user = await requireUser();
-  const tz = user.timezone;
-  const now = new Date();
-  const { upcoming, past } = await getSchedule(user.id, now);
   const sp = await searchParams;
+  // Admins can look at (and add events to) a director's schedule with ?for=<id>.
+  const people = user.role === "admin" ? await listPeople(user.id) : [];
+  const viewing = typeof sp.for === "string" ? (people.find((p) => p.id === sp.for) ?? null) : null;
+  const owner = viewing ?? user;
+  const newHref = viewing ? `/events/new?for=${viewing.id}` : "/events/new";
+  const tz = owner.timezone;
+  const now = new Date();
+  const { upcoming, past } = await getSchedule(owner.id, now);
   const flash = sp.welcome
     ? "Email confirmed — your account is ready!"
     : sp.saved
@@ -48,13 +53,33 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
             {formatWhen(now, tz, { weekday: "long", day: "numeric", month: "long", hour: undefined, minute: undefined })}
           </p>
           <h1 className="mt-1 text-[28px] font-semibold tracking-tight">
-            {greeting(utcToWall(now, tz).h)}, {user.name.split(" ")[0]}
+            {viewing ? `${viewing.name}'s schedule` : `${greeting(utcToWall(now, tz).h)}, ${user.name.split(" ")[0]}`}
           </h1>
         </div>
-        <Link href="/events/new" className="btn-primary hidden sm:inline-flex">
+        <Link href={newHref} className="btn-primary hidden sm:inline-flex">
           <Plus className="size-4" /> New event
         </Link>
       </div>
+
+      {people.length > 0 && (
+        <nav aria-label="Whose schedule" className="mt-5 flex flex-wrap gap-2">
+          {[{ id: "", name: "My schedule" }, ...people].map((p) => {
+            const active = (viewing?.id ?? "") === p.id;
+            return (
+              <Link
+                key={p.id || "me"}
+                href={p.id ? `/?for=${p.id}` : "/"}
+                aria-current={active ? "page" : undefined}
+                className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  active ? "border-primary bg-primary-soft text-primary" : "border-border text-muted hover:bg-surface-2"
+                }`}
+              >
+                {p.name}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {!mailConfigured() && (
         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-warning/25 bg-warning-soft px-4 py-3.5 text-sm text-warning">
@@ -78,11 +103,13 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
           <span className="flex size-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
             <CalendarPlus className="size-6" />
           </span>
-          <h2 className="mt-5 text-lg font-semibold">Your schedule is empty</h2>
+          <h2 className="mt-5 text-lg font-semibold">{viewing ? `${viewing.name}'s schedule is empty` : "Your schedule is empty"}</h2>
           <p className="mt-1.5 max-w-sm text-[15px] text-muted">
-            Add your first meeting, task or appointment and we&apos;ll email you before it starts.
+            {viewing
+              ? `Add a meeting or task. ${viewing.name.split(" ")[0]} will be reminded before it starts.`
+              : "Add your first meeting, task or appointment and we'll remind you before it starts."}
           </p>
-          <Link href="/events/new" className="btn-primary mt-6">
+          <Link href={newHref} className="btn-primary mt-6">
             <Plus className="size-4" /> Add an event
           </Link>
         </div>
@@ -122,7 +149,7 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
 
       {/* Floating add button on phones */}
       <Link
-        href="/events/new"
+        href={newHref}
         aria-label="New event"
         className="fixed right-5 bottom-24 z-10 flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-text shadow-pop sm:hidden"
       >
@@ -135,6 +162,7 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
 function ReminderChips({ item }: { item: ScheduleItem }) {
   return (
     <>
+      {item.addedBy && <span className="chip bg-accent-soft text-accent">Added by {item.addedBy}</span>}
       {item.repeat !== "none" && (
         <span className="chip">
           <Repeat className="size-3" /> {REPEAT_LABELS[item.repeat]}
@@ -157,7 +185,7 @@ function NextUp({ item, tz, now }: { item: ScheduleItem; tz: string; now: Date }
   return (
     <Link
       href={`/events/${item.id}`}
-      className="group relative mt-8 block overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 p-6 text-white shadow-pop sm:p-8"
+      className="group relative mt-8 block overflow-hidden rounded-3xl bg-gradient-to-br from-[#7a4527] via-[#8c3a49] to-[#b8205f] p-6 text-white shadow-pop sm:p-8"
     >
       <div aria-hidden className="absolute -top-24 -right-16 size-72 rounded-full bg-white/10 blur-2xl" />
       <div className="relative">
@@ -168,7 +196,7 @@ function NextUp({ item, tz, now }: { item: ScheduleItem; tz: string; now: Date }
           <ChevronRight className="size-5 opacity-60 transition-transform group-hover:translate-x-0.5" />
         </div>
         <h2 className="mt-5 text-2xl font-semibold tracking-tight sm:text-[28px]">{item.title}</h2>
-        <p className="mt-2 text-[15px] text-indigo-100">
+        <p className="mt-2 text-[15px] text-white/90">
           {dayLabel(item.next!, tz, now)} · {formatTime(item.next!, tz)}
           {item.location && (
             <>
@@ -177,7 +205,7 @@ function NextUp({ item, tz, now }: { item: ScheduleItem; tz: string; now: Date }
             </>
           )}
         </p>
-        {item.notes && <p className="mt-3 line-clamp-2 max-w-xl text-sm text-indigo-100/80">{item.notes}</p>}
+        {item.notes && <p className="mt-3 line-clamp-2 max-w-xl text-sm text-white/90">{item.notes}</p>}
         <div className="mt-5 flex flex-wrap gap-2 [&_.chip]:bg-white/15 [&_.chip]:text-white">
           <ReminderChips item={item} />
         </div>

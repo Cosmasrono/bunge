@@ -1,12 +1,13 @@
 "use client";
 
-import { CalendarDays, FileSignature, Settings2, UserRound } from "lucide-react";
+import { CalendarDays, FileSignature, Settings2, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
   { href: "/", label: "Schedule", icon: CalendarDays, match: (p: string) => p === "/" || p.startsWith("/events") },
   { href: "/documents", label: "Documents", icon: FileSignature, match: (p: string) => p.startsWith("/documents") },
+  { href: "/team", label: "Team", icon: Users, match: (p: string) => p.startsWith("/team"), admin: true },
   { href: "/account", label: "Account", icon: UserRound, match: (p: string) => p.startsWith("/account") },
   { href: "/settings", label: "Settings", icon: Settings2, match: (p: string) => p.startsWith("/settings"), admin: true },
 ];

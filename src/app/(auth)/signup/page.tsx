@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
+import { signupOpen } from "@/lib/auth/invite";
 import { getCurrentUser } from "@/lib/auth/session";
 import { SignupForm } from "./signup-form";
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Create account" };
 export default async function SignupPage({ searchParams }: PageProps<"/signup">) {
   const n = await getDb().user.count();
   if (n === 0) redirect("/setup");
+  if (!signupOpen()) redirect("/login");
   if (await getCurrentUser()) redirect("/");
   const { expired } = await searchParams;
   return (

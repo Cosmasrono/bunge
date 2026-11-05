@@ -1,48 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f6f7fb;
+  /* Brown is the brand colour, pink the accent. Every text/background pair below was checked for WCAG AA (4.5:1). */
+  --bg: #faf6f3;
   --surface: #ffffff;
-  --surface-2: #f1f3f9;
-  --border: #e3e6ef;
-  --text: #141a2b;
-  --muted: #5d6680;
-  --faint: #8a93ab;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-soft: #eef0ff;
+  --surface-2: #f5eee9;
+  --border: #e6d9d0;
+  --text: #2b1d17;
+  --muted: #6a5750;
+  --faint: #7a645a;
+  --primary: #7a4527;
+  --primary-hover: #653720;
+  --primary-soft: #f6ebe3;
   --primary-text: #ffffff;
-  --success: #0f8a5f;
-  --success-soft: #e6f6ef;
-  --warning: #b45309;
-  --warning-soft: #fdf3e2;
-  --danger: #d1343a;
-  --danger-soft: #fdecec;
-  --ring: rgb(79 70 229 / 0.35);
-  --shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
-  --shadow-lg: 0 12px 32px -12px rgb(16 24 40 / 0.18);
+  --accent: #b8205f;
+  --accent-hover: #9d1a50;
+  --accent-soft: #fde8f0;
+  --accent-text: #ffffff;
+  --success: #0b7a54;
+  --success-soft: #e3f5ec;
+  --warning: #9a4a06;
+  --warning-soft: #fdf1de;
+  --danger: #c0282e;
+  --danger-soft: #fdeaea;
+  --ring: rgb(122 69 39 / 0.35);
+  --shadow: 0 1px 2px rgb(43 29 23 / 0.05), 0 1px 3px rgb(43 29 23 / 0.07);
+  --shadow-lg: 0 12px 32px -12px rgb(43 29 23 / 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1017;
-    --surface: #151a24;
-    --surface-2: #1c2230;
-    --border: #262d3d;
-    --text: #e9ecf3;
-    --muted: #a0a9bf;
-    --faint: #6f7891;
-    --primary: #7c74ff;
-    --primary-hover: #8f88ff;
-    --primary-soft: #232448;
-    --primary-text: #0b0d16;
-    --success: #3fcf95;
-    --success-soft: #12291f;
-    --warning: #f2a93b;
-    --warning-soft: #2c2212;
-    --danger: #ff6b6f;
-    --danger-soft: #2f1719;
-    --ring: rgb(124 116 255 / 0.4);
+    --bg: #1a1210;
+    --surface: #241b18;
+    --surface-2: #2e231f;
+    --border: #44342d;
+    --text: #f5ebe6;
+    --muted: #c7b6ad;
+    --faint: #a3918a;
+    --primary: #e0a77f;
+    --primary-hover: #eab995;
+    --primary-soft: #3a2a22;
+    --primary-text: #1a1210;
+    --accent: #ff8fbb;
+    --accent-hover: #ffa8cb;
+    --accent-soft: #3d1d2b;
+    --accent-text: #1a1210;
+    --success: #4fd69b;
+    --success-soft: #132b21;
+    --warning: #f2b04a;
+    --warning-soft: #2f2413;
+    --danger: #ff7a7e;
+    --danger-soft: #33191b;
+    --ring: rgb(224 167 127 / 0.4);
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-lg: 0 16px 40px -16px rgb(0 0 0 / 0.6);
   }
@@ -60,6 +69,10 @@
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-primary-text: var(--primary-text);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);

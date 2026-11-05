@@ -62,44 +62,57 @@ async function validate(form: FormData, timezone: string) {
 
 export async function createEvent(_: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser();
-  const v = await validate(form, user.timezone);
-  if ("error" in v) return { error: v.error, fields: v.fields };
-  await getDb().event.create({ data: { ...v.data, userId: user.id } });
+  // Admins can add an event to someone else's schedule; they get the reminders.
+  let owner = { id: user.id, timezone: user.timezone };
+  const forUserId = String(form.get("forUserId") ?? "");
+  if (user.role === "admin" && forUserId && forUserId !== user.id) {
+    const target = isObjectId(forUserId) ? await getDb().user.findUnique({ where: { id: forUserId }, select: { id: true, timezone: true } }) : null;
+    if (!target) return { error: "That person no longer has an account.", fields: { forUserId } };
+    owner = target;
+  }
+  const v = await validate(form, owner.timezone);
+  if ("error" in v) return { error: v.error, fields: { ...v.fields, forUserId } };
+  await getDb().event.create({ data: { ...v.data, userId: owner.id, createdById: user.id } });
   revalidatePath("/");
-  redirect("/?saved=1");
+  redirect(owner.id === user.id ? "/?saved=1" : `/?for=${owner.id}&saved=1`);
 }
 
 export async function updateEvent(eventId: string, _: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser();
   if (!isObjectId(eventId)) return { error: "That event no longer exists." };
   const db = getDb();
-  const existing = await db.event.findFirst({ where: { id: eventId, userId: user.id } });
+  // Admins may edit anyone's events; everyone else only their own.
+  const scope = user.role === "admin" ? { id: eventId } : { id: eventId, userId: user.id };
+  const existing = await db.event.findFirst({ where: scope });
   if (!existing) return { error: "That event no longer exists." };
   // Keep the event's own time zone when editing.
   const v = await validate(form, existing.timezone);
   if ("error" in v) return { error: v.error, fields: v.fields };
-  await db.event.updateMany({
-    where: { id: eventId, userId: user.id },
-    data: { ...v.data, updatedAt: new Date() },
-  });
+  await db.event.updateMany({ where: scope, data: { ...v.data, updatedAt: new Date() } });
   // The time may have changed, so allow its reminders to go out again.
   if (existing.startLocal !== v.data.startLocal || existing.repeat !== v.data.repeat) {
     await db.reminderSent.deleteMany({ where: { eventId } });
   }
   revalidatePath("/");
-  redirect("/?saved=1");
+  redirect(existing.userId === user.id ? "/?saved=1" : `/?for=${existing.userId}&saved=1`);
 }
 
 export async function deleteEvent(eventId: string) {
   const user = await requireUser();
+  let back = "/?deleted=1";
   if (isObjectId(eventId)) {
     const db = getDb();
-    const { count } = await db.event.deleteMany({ where: { id: eventId, userId: user.id } });
-    // Also clear its sent-markers directly instead of relying on Prisma's emulated cascade.
-    if (count) await db.reminderSent.deleteMany({ where: { eventId } });
+    const scope = user.role === "admin" ? { id: eventId } : { id: eventId, userId: user.id };
+    const existing = await db.event.findFirst({ where: scope, select: { userId: true } });
+    if (existing) {
+      await db.event.deleteMany({ where: scope });
+      // Also clear its sent-markers directly instead of relying on Prisma's emulated cascade.
+      await db.reminderSent.deleteMany({ where: { eventId } });
+      if (existing.userId !== user.id) back = `/?for=${existing.userId}&deleted=1`;
+    }
   }
   revalidatePath("/");
-  redirect("/?deleted=1");
+  redirect(back);
 }
 
 export async function sendTestEmail(_prev: FormState): Promise<FormState> {

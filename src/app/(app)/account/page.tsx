@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { signOutOtherDevices } from "@/app/actions/auth";
 import { Flash } from "@/components/client-bits";
 import { getDb } from "@/db";
+import { pushConfigured, vapidPublicKey } from "@/lib/push";
+import { PushSettings } from "./push-settings";
 import { requireUser } from "@/lib/auth/session";
 import { PasswordForm, ProfileForm } from "./forms";
 
@@ -37,6 +39,16 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
         <h2 className="font-semibold">Profile</h2>
         <p className="mt-1 text-sm text-muted">Reminders go to {user.email}.</p>
         <ProfileForm name={user.name} timezone={user.timezone} timezones={timezones} />
+      </section>
+
+      <section className="card p-5 sm:p-6">
+        <h2 className="font-semibold">Notifications</h2>
+        <p className="mt-1 text-sm text-muted">Get your reminders as a pop-up on this phone or computer, even when the app isn&apos;t open. Turn it on for each device you use.</p>
+        {pushConfigured() ? (
+          <PushSettings publicKey={vapidPublicKey()} />
+        ) : (
+          <p className="mt-4 rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning">Notifications aren&apos;t set up on the server yet. An admin needs to add the VAPID keys (see the README).</p>
+        )}
       </section>
 
       <section className="card p-5 sm:p-6">

@@ -10,5 +10,5 @@ export async function findValidReset(token: string) {
     include: { user: { select: { id: true, email: true, name: true } } },
   });
   if (!reset) return null;
-  return { resetId: reset.id, userId: reset.user.id, email: reset.user.email, name: reset.user.name };
+  return { resetId: reset.id, userId: reset.user.id, email: reset.user.email, name: reset.user.name, purpose: reset.purpose };
 }

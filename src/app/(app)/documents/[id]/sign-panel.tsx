@@ -1,15 +1,16 @@
 "use client";
 
-import { Eraser, PenLine, Type, XCircle } from "lucide-react";
+import { Eraser, MapPin, PenLine, Type, XCircle } from "lucide-react";
 import { useActionState, useRef, useState } from "react";
 import { declineDocument, signDocument } from "@/app/actions/documents";
 import { FormMessage, SubmitButton } from "@/components/form";
+import type { Evidence } from "@/lib/evidence";
 
 const W = 600;
 const H = 200;
 
 /** The signer's panel: draw or type a signature, agree, and submit. Decline is tucked underneath. */
-export function SignPanel({ documentId, signerName }: { documentId: string; signerName: string }) {
+export function SignPanel({ documentId, signerName, requireLocation }: { documentId: string; signerName: string; requireLocation: boolean }) {
   const [state, action] = useActionState(signDocument.bind(null, documentId), undefined);
   const [declineState, declineAction] = useActionState(declineDocument.bind(null, documentId), undefined);
   const [mode, setMode] = useState<"drawn" | "typed">("drawn");
@@ -20,6 +21,46 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
   const [showDecline, setShowDecline] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const [evidence, setEvidence] = useState<Evidence | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  /** Reads what this device can tell us (with the consent ticked below) and asks the browser for the location. */
+  async function collectDetails() {
+    setLocating(true);
+    let deviceId: string | undefined;
+    try {
+      deviceId = localStorage.getItem("nd_device") ?? undefined;
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem("nd_device", deviceId);
+      }
+    } catch {}
+    let geo: Evidence["geo"] = null;
+    let geoStatus: Evidence["geoStatus"] = "unavailable";
+    if ("geolocation" in navigator) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }),
+        );
+        geo = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+        geoStatus = "granted";
+      } catch (err) {
+        const code = (err as GeolocationPositionError).code;
+        geoStatus = code === 1 ? "denied" : code === 3 ? "timeout" : "unavailable";
+      }
+    }
+    setEvidence({
+      deviceId,
+      platform: navigator.platform?.slice(0, 80) || undefined,
+      language: navigator.language?.slice(0, 20) || undefined,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      screen: `${screen.width}x${screen.height}`,
+      touch: navigator.maxTouchPoints > 0,
+      geoStatus,
+      geo,
+    });
+    setLocating(false);
+  }
 
   const point = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -65,7 +106,7 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
     setDrawn("");
   };
 
-  const ready = agree && (mode === "drawn" ? hasInk : typed.trim().length >= 2);
+  const ready = agree && !locating && (!requireLocation || Boolean(evidence?.geo)) && (mode === "drawn" ? hasInk : typed.trim().length >= 2);
 
   return (
     <section className="card p-5 sm:p-6">
@@ -76,6 +117,7 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
         <FormMessage error={state?.error} />
         <input type="hidden" name="kind" value={mode} />
         <input type="hidden" name="drawn" value={mode === "drawn" ? drawn : ""} />
+        <input type="hidden" name="evidence" value={JSON.stringify(evidence ?? { geoStatus: "skipped", geo: null })} />
 
         <div role="tablist" aria-label="Signature type" className="inline-flex rounded-xl bg-surface-2 p-1 text-sm font-medium">
           {([
@@ -143,11 +185,35 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
             type="checkbox"
             name="agree"
             checked={agree}
-            onChange={(e) => setAgree(e.target.checked)}
+            onChange={(e) => {
+              setAgree(e.target.checked);
+              if (e.target.checked && !evidence) void collectDetails();
+            }}
             className="mt-0.5 size-4 shrink-0 accent-(--primary)"
           />
-          <span>I have read this document and agree to sign it electronically.</span>
+          <span>
+            I have read this document and agree to sign it electronically. I agree that the time, my IP address, my device details and my location are
+            recorded as proof of signing.
+          </span>
         </label>
+
+        {agree && (
+          <p className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <MapPin className="size-4 shrink-0 text-faint" />
+            {locating ? (
+              "Getting your location… allow it when your browser asks."
+            ) : evidence?.geo ? (
+              `Location captured (accurate to about ${Math.round(evidence.geo.accuracy)} m).`
+            ) : (
+              <>
+                {requireLocation ? "Location is needed to sign." : "Location not shared."}{" "}
+                <button type="button" onClick={() => void collectDetails()} className="font-semibold text-primary hover:underline">
+                  Try again
+                </button>
+              </>
+            )}
+          </p>
+        )}
 
         <SubmitButton pendingText="Signing…" disabled={!ready}>
           Sign and submit
