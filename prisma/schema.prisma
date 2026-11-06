@@ -1,4 +1,4 @@
-// Nation Desk data model (MongoDB via Prisma).
+// PRS data model (MongoDB via Prisma).
 // No migrations: apply changes with `npm run db:push`.
 
 generator client {

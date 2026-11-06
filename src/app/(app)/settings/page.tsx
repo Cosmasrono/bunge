@@ -54,7 +54,7 @@ export default async function SettingsPage() {
 SMTP_PORT=465
 SMTP_USER=you@gmail.com
 SMTP_PASS=your-app-password
-MAIL_FROM="Nation Desk <you@gmail.com>"`}
+MAIL_FROM="PRS <you@gmail.com>"`}
             </pre>
             <p className="mt-3">
               On your PC these go in <code className="font-mono">.env</code>; online, in Vercel → Project → Settings → Environment

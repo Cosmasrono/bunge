@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 // Lets the site be installed on a phone's home screen. On iPhone this is required for push notifications.
 export default function manifest(): MetadataRoute.Manifest {
-  const name = process.env.APP_NAME || "Nation Desk";
+  const name = process.env.APP_NAME || "PRS";
   return {
     name,
     short_name: name,

@@ -6,7 +6,7 @@ export function Logo({ className = "" }: { className?: string }) {
       <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#7a4527] to-[#b8205f] text-white shadow-sm">
         <CalendarCheck2 className="size-5" />
       </span>
-      <span className="text-[17px]">{process.env.APP_NAME || "Nation Desk"}</span>
+      <span className="text-[17px]">{process.env.APP_NAME || "PRS"}</span>
     </div>
   );
 }

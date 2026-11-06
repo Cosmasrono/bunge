@@ -1,4 +1,4 @@
-# Nation Desk
+# PRS
 
 Record your schedule and get reminded by email — 1 day, 5 hours, 1 hour and 15 minutes before
 (or at the start time). Built with Next.js 16, MongoDB (through Prisma) and your own SMTP email account.
@@ -58,7 +58,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=you@gmail.com
 SMTP_PASS=your-app-password
-MAIL_FROM="Nation Desk <you@gmail.com>"
+MAIL_FROM="PRS <you@gmail.com>"
 ```
 
 For Gmail, `SMTP_PASS` must be an **App Password** (Google Account → Security → 2-Step Verification →
@@ -176,7 +176,7 @@ Good to know:
 - Notifications need **HTTPS**. They work on `http://localhost` on the computer running the app, but a phone can only use them
   once the app is online (for example on Vercel) or reachable through an HTTPS address.
 - **iPhone**: Apple only allows notifications for sites added to the Home Screen (iOS 16.4 or newer). In Safari tap
-  Share → **Add to Home Screen**, open Nation Desk from the new icon, then turn notifications on. The Account page tells iPhone users this.
+  Share → **Add to Home Screen**, open PRS from the new icon, then turn notifications on. The Account page tells iPhone users this.
 - Reminders are checked about every minute by a scheduled job (see *Reminders every minute* above). On your own PC, the built-in
   checker runs every 30 seconds while `npm run dev` / `npm start` is running, so the computer must be on. Online, use the cron
   URL with `CRON_SECRET`.

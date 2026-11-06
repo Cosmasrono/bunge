@@ -6,7 +6,7 @@ import nodemailer, { type Transporter } from "nodemailer";
  * The Laravel-style names also work: MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD,
  * MAIL_FROM_NAME, MAIL_FROM_ADDRESS. The SMTP_* names win if both are set.
  */
-export const APP_NAME = process.env.APP_NAME || "Nation Desk";
+export const APP_NAME = process.env.APP_NAME || "PRS";
 export const APP_URL = (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
 
 const env = (...keys: string[]) => keys.map((k) => process.env[k]?.trim()).find(Boolean) || "";

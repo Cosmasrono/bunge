@@ -9,11 +9,11 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { default: process.env.APP_NAME || "Nation Desk", template: `%s · ${process.env.APP_NAME || "Nation Desk"}` },
+  title: { default: process.env.APP_NAME || "PRS", template: `%s · ${process.env.APP_NAME || "PRS"}` },
   description: "Your schedule, with reminders by email and notification.",
   robots: { index: false, follow: false },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
-  appleWebApp: { capable: true, title: process.env.APP_NAME || "Nation Desk", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: process.env.APP_NAME || "PRS", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

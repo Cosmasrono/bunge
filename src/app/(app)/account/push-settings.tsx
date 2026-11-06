@@ -105,7 +105,7 @@ export function PushSettings({ publicKey }: { publicKey: string }) {
           <div className="space-y-1">
             <p className="font-semibold">On iPhone, add this site to your Home Screen first</p>
             <p>
-              Tap <Share className="inline size-3.5 -translate-y-px" /> Share → <b>Add to Home Screen</b>, then open Nation Desk from the new icon and turn notifications on here. This needs iOS 16.4 or newer.
+              Tap <Share className="inline size-3.5 -translate-y-px" /> Share → <b>Add to Home Screen</b>, then open PRS from the new icon and turn notifications on here. This needs iOS 16.4 or newer.
             </p>
           </div>
         </div>
