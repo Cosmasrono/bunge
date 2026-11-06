@@ -1,6 +1,5 @@
-import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { createEvent } from "@/app/actions/events";
 import { EventForm } from "@/components/event-form";
 import { canScheduleForOthers } from "@/lib/auth/permissions";
@@ -30,10 +29,7 @@ export default async function NewEventPage({ searchParams }: PageProps<"/events/
   const o = eventFormOptions(user.timezone);
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/" className="btn-ghost -ml-2 px-2">
-        <ArrowLeft className="size-4" /> Schedule
-      </Link>
-      <h1 className="mt-3 mb-6 text-2xl font-semibold tracking-tight">New event</h1>
+      <PageHeader back={{ href: "/", label: "Schedule" }} eyebrow="Make a little plan" title="New event" description="Add the details. Set a reminder. We'll help you stay on time." />
       <EventForm
         action={createEvent}
         submitLabel="Save event"

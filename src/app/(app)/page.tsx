@@ -1,7 +1,8 @@
-import { BellOff, BellRing, CalendarPlus, ChevronRight, Clock, MapPin, Plus, Repeat } from "lucide-react";
+import { ArrowUpRight, BellOff, BellRing, CalendarDays, CalendarPlus, ChevronRight, Clock, MapPin, Plus, Repeat } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AutoRefresh, Flash } from "@/components/client-bits";
+import { SchedulePicker } from "@/components/schedule-picker";
 import { canScheduleForOthers } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { getSchedule, listPeople, type ScheduleItem } from "@/lib/events";
@@ -27,6 +28,8 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
   const tz = owner.timezone;
   const now = new Date();
   const { upcoming, past } = await getSchedule(owner.id, now);
+  const todayCount = upcoming.filter((item) => dayKey(item.next!, tz) === dayKey(now, tz)).length;
+  const reminderCount = upcoming.filter((item) => item.emailReminders && item.leads.length > 0).length;
   const flash = typeof sp.added === "string" && Number(sp.added) > 1
     ? `Event added to ${Number(sp.added)} schedules. Everyone was notified.`
     : sp.welcome
@@ -52,48 +55,44 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-faint">
-            {formatWhen(now, tz, { weekday: "long", day: "numeric", month: "long", hour: undefined, minute: undefined })}
-          </p>
-          <h1 className="mt-1 text-[28px] font-semibold tracking-tight">
+          <p className="text-[11px] font-semibold tracking-[0.16em] text-faint uppercase">Your day, at a glance</p>
+          <h1 className="mt-2 text-[26px] leading-tight font-semibold tracking-tight sm:text-[32px]">
             {viewing ? `${viewing.name}'s schedule` : `${greeting(utcToWall(now, tz).h)}, ${user.name.split(" ")[0]}`}
           </h1>
+          <p className="mt-2 text-sm text-muted">A little planning. A calmer day.</p>
         </div>
-        <Link href={newHref} className="btn-primary hidden sm:inline-flex">
+        <Link href={newHref} className="btn-primary">
           <Plus className="size-4" /> New event
         </Link>
       </div>
 
       {people.length > 0 && (
-        <nav aria-label="Whose schedule" className="mt-5 flex flex-wrap gap-2">
-          {[{ id: "", name: "My schedule" }, ...people].map((p) => {
-            const active = (viewing?.id ?? "") === p.id;
-            return (
-              <Link
-                key={p.id || "me"}
-                href={p.id ? `/?for=${p.id}` : "/"}
-                aria-current={active ? "page" : undefined}
-                className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                  active ? "border-primary bg-primary-soft text-primary" : "border-border text-muted hover:bg-surface-2"
-                }`}
-              >
-                {p.name}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="mt-6"><SchedulePicker people={people.map(({ id, name }) => ({ id, name }))} value={viewing?.id ?? ""} /></div>
       )}
+
+      <dl className="mt-6 grid grid-cols-3 gap-2 sm:gap-4">
+        {[
+          { label: "Today", value: todayCount, hint: "events scheduled", icon: CalendarDays, color: "bg-primary-soft text-primary" },
+          { label: "Upcoming", value: upcoming.length, hint: "events ahead", icon: Clock, color: "bg-accent-soft text-accent" },
+          { label: "With reminders", value: reminderCount, hint: "events with alerts", icon: BellRing, color: "bg-success-soft text-success" },
+        ].map(({ label, value, hint, icon: Icon, color }) => (
+          <div key={label} className="card flex items-center justify-between gap-2 p-3 sm:p-5">
+            <div><dt className="text-xs font-medium text-muted">{label}</dt><dd className="mt-1 text-2xl leading-tight font-semibold tracking-tight tabular-nums sm:text-3xl">{value}<span className="mt-1 hidden text-xs leading-relaxed font-normal tracking-normal text-faint sm:block">{hint}</span></dd></div>
+            <span className={`hidden size-10 shrink-0 items-center justify-center rounded-xl sm:flex ${color}`}><Icon aria-hidden className="size-[18px]" /></span>
+          </div>
+        ))}
+      </dl>
 
       {!mailConfigured() && (
         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-warning/25 bg-warning-soft px-4 py-3.5 text-sm text-warning">
           <BellOff className="mt-0.5 size-4 shrink-0" />
           <p>
-            <b>Email reminders are off</b> — the server&apos;s email settings aren&apos;t filled in yet.
+            <b>Email reminders are off.</b> {user.role === "admin" ? "Connect your email in Settings to start sending reminders." : "Ask your administrator to enable email reminders."}
             {user.role === "admin" && (
               <>
                 {" "}
                 <Link href="/settings" className="font-semibold underline underline-offset-2">
-                  See how to set it up
+                  Open settings
                 </Link>
               </>
             )}
@@ -102,11 +101,11 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
       )}
 
       {!next ? (
-        <div className="card mt-8 flex flex-col items-center px-6 py-14 text-center">
+        <div className="card mt-6 flex flex-col items-center px-6 py-16 text-center sm:py-20">
           <span className="flex size-14 items-center justify-center rounded-2xl bg-primary-soft text-primary">
             <CalendarPlus className="size-6" />
           </span>
-          <h2 className="mt-5 text-lg font-semibold">{viewing ? `${viewing.name}'s schedule is empty` : "Your schedule is empty"}</h2>
+          <h2 className="mt-5 text-xl font-semibold">{viewing ? `${viewing.name}'s schedule is clear` : "A clear schedule. A fresh start."}</h2>
           <p className="mt-1.5 max-w-sm text-[15px] text-muted">
             {viewing
               ? `Add a meeting or task. ${viewing.name.split(" ")[0]} will be reminded before it starts.`
@@ -120,10 +119,10 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
         <>
           <NextUp item={next} tz={tz} now={now} />
           {groups.size > 0 && (
-            <div className="mt-10 space-y-8">
+            <div className="mt-8 space-y-6">
               {[...groups.entries()].map(([key, g]) => (
                 <section key={key}>
-                  <h2 className="mb-3 text-xs font-semibold tracking-wider text-faint uppercase">{g.label}</h2>
+                  <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">{g.label}<span className="chip">{g.items.length}</span></h2>
                   <ul className="card divide-y divide-border overflow-hidden">
                     {g.items.map((item) => (
                       <EventRowView key={item.id} item={item} tz={tz} />
@@ -150,14 +149,7 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
         </details>
       )}
 
-      {/* Floating add button on phones */}
-      <Link
-        href={newHref}
-        aria-label="New event"
-        className="fixed right-5 bottom-24 z-10 flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-text shadow-pop sm:hidden"
-      >
-        <Plus className="size-6" />
-      </Link>
+      <p className="mt-7 flex items-center gap-1.5 text-xs text-faint"><Clock aria-hidden className="size-3.5" /> All times in {tz.replace(/_/g, " ")}</p>
     </div>
   );
 }
@@ -188,17 +180,16 @@ function NextUp({ item, tz, now }: { item: ScheduleItem; tz: string; now: Date }
   return (
     <Link
       href={`/events/${item.id}`}
-      className="group relative mt-8 block overflow-hidden rounded-3xl bg-gradient-to-br from-[#7a4527] via-[#8c3a49] to-[#b8205f] p-6 text-white shadow-pop sm:p-8"
+      className="group relative mt-6 block overflow-hidden rounded-2xl bg-[#53372c] p-6 text-white shadow-card transition-colors hover:bg-[#624234] sm:p-8"
     >
-      <div aria-hidden className="absolute -top-24 -right-16 size-72 rounded-full bg-white/10 blur-2xl" />
       <div className="relative">
         <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium">
             <Clock className="size-3.5" /> Next up · {humanUntil(item.next!.getTime() - now.getTime())}
           </span>
-          <ChevronRight className="size-5 opacity-60 transition-transform group-hover:translate-x-0.5" />
+          <ArrowUpRight aria-hidden className="size-5 text-[#edc6d6] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
         </div>
-        <h2 className="mt-5 text-2xl font-semibold tracking-tight sm:text-[28px]">{item.title}</h2>
+        <h2 className="mt-6 text-2xl font-semibold tracking-tight [overflow-wrap:anywhere] sm:text-[28px]">{item.title}</h2>
         <p className="mt-2 text-[15px] text-white/90">
           {dayLabel(item.next!, tz, now)} · {formatTime(item.next!, tz)}
           {item.location && (
@@ -209,7 +200,7 @@ function NextUp({ item, tz, now }: { item: ScheduleItem; tz: string; now: Date }
           )}
         </p>
         {item.notes && <p className="mt-3 line-clamp-2 max-w-xl text-sm text-white/90">{item.notes}</p>}
-        <div className="mt-5 flex flex-wrap gap-2 [&_.chip]:bg-white/15 [&_.chip]:text-white">
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-white/15 pt-5 [&_.chip]:bg-white/10 [&_.chip]:text-white">
           <ReminderChips item={item} />
         </div>
       </div>
@@ -221,8 +212,8 @@ function EventRowView({ item, tz, past = false }: { item: ScheduleItem; tz: stri
   const when = past ? item.startUtc : item.next!;
   return (
     <li>
-      <Link href={`/events/${item.id}`} className="flex items-start gap-4 px-4 py-4 transition-colors hover:bg-surface-2 sm:px-5">
-        <div className="w-16 shrink-0 pt-0.5 text-sm font-semibold tabular-nums sm:w-20">
+      <Link href={`/events/${item.id}`} className="flex items-start gap-4 px-4 py-5 transition-colors hover:bg-surface-2 sm:px-5">
+        <div className="w-20 shrink-0 border-r border-border pt-0.5 pr-2 text-sm font-semibold whitespace-nowrap text-primary tabular-nums sm:w-24">
           {past ? formatWhen(when, tz, { weekday: undefined, hour: undefined, minute: undefined }) : formatTime(when, tz)}
         </div>
         <div className="min-w-0 flex-1">

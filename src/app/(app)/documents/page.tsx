@@ -26,22 +26,30 @@ export default async function DocumentsPage() {
   const empty = !toSign.length && !sent.length && !received.length;
 
   return (
-    <div className="space-y-10">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Documents</h1>
-          <p className="mt-1 text-sm text-muted">Send a PDF to one or more colleagues to sign, or sign what was sent to you.</p>
+          <p className="mb-2 text-[11px] font-semibold tracking-[0.16em] text-faint uppercase">Keep work moving</p>
+          <h1 className="text-[28px] leading-tight font-semibold tracking-tight sm:text-[32px]">Documents</h1>
+          <p className="mt-2 max-w-lg text-sm text-muted">Send, sign, and keep track of your documents in one place.</p>
         </div>
         {canSend && (
           <Link href="/documents/new" className="btn-primary shrink-0">
-            <FilePlus2 className="size-4" /> <span className="hidden sm:inline">Send a document</span>
-            <span className="sm:hidden">New</span>
+            <FilePlus2 className="size-4" /> Send a document
           </Link>
         )}
       </div>
 
+      {!empty && <dl className="grid grid-cols-3 gap-2 sm:gap-4">
+        {[
+          { label: "To sign", value: toSign.length, style: "text-accent" },
+          { label: "Sent by you", value: sent.length, style: "text-primary" },
+          { label: "Answered by you", value: received.length, style: "text-success" },
+        ].map(({ label, value, style }) => <div key={label} className="card p-3 sm:p-5"><dt className="text-xs font-medium text-muted">{label}</dt><dd className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl ${style}`}>{value}</dd></div>)}
+      </dl>}
+
       {empty && (
-        <div className="card flex flex-col items-center px-6 py-14 text-center">
+        <div className="card flex flex-col items-center px-6 py-16 text-center sm:py-20">
           <span className="flex size-12 items-center justify-center rounded-2xl bg-primary-soft text-primary">
             <FileText className="size-6" />
           </span>

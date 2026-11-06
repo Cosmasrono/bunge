@@ -1,71 +1,65 @@
-import { BellRing, CalendarClock, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, BellRing, CalendarClock, Check, FileSignature, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { Logo } from "@/components/logo";
 import landing from "@/lib/landing-image.json";
 
 const image = landing.image as { src: string; srcSm: string; alt: string; credit: string } | null;
 
-/**
- * Sign-in pages: a full-screen background (the photo set with `npm run image:landing`, or a brown and pink
- * gradient until there is one) under a dark overlay, with the form on a card. The overlay is at least 60% black, which
- * keeps white text at 4.5:1 or better even over a white part of the photo (WCAG AA).
- */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative isolate min-h-dvh overflow-hidden bg-[#2b1810] text-white">
-      {/* Background */}
-      {image ? (
-        <picture>
-          <source media="(max-width: 767px)" srcSet={image.srcSm} type="image/webp" />
-          <img src={image.src} alt={image.alt} fetchPriority="high" decoding="async" className="absolute inset-0 -z-30 size-full object-cover" />
-        </picture>
-      ) : (
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-30 bg-[linear-gradient(135deg,#3b1f12_0%,#7a4527_48%,#b8205f_100%)]"
-        />
-      )}
-      <div aria-hidden className="absolute inset-0 -z-20 bg-gradient-to-b from-black/60 via-black/60 to-black/75" />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 -right-32 -z-10 size-[560px] rounded-full bg-[radial-gradient(circle,#b8205f_0%,transparent_65%)] opacity-30"
-      />
+    <div className="min-h-dvh bg-bg p-4 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6 lg:p-6">
+      <a href="#auth-content" className="skip-link">Skip to form</a>
+      <aside className="relative isolate hidden min-h-[calc(100dvh-3rem)] flex-col justify-between overflow-hidden rounded-[28px] bg-[#39271f] p-10 text-white lg:flex xl:p-14">
+        {image && (
+          <>
+            <picture>
+              <source media="(max-width: 767px)" srcSet={image.srcSm} type="image/webp" />
+              <img src={image.src} alt={image.alt} fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 size-full object-cover" />
+            </picture>
+            <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(38,25,19,0.88),rgba(38,25,19,0.82))]" />
+          </>
+        )}
+        <Link href="/" aria-label="Go to home" className="w-fit"><Logo className="text-white" /></Link>
 
-      <div className="mx-auto grid min-h-dvh max-w-6xl gap-10 px-5 py-8 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:items-center lg:gap-16">
-        <div className="flex flex-col lg:min-h-[70dvh] lg:justify-between">
-          <Logo className="text-white" />
+        <div className="my-14 max-w-lg">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-[11px] font-medium tracking-wider text-[#f3d4e1] uppercase"><span aria-hidden className="size-1.5 rounded-full bg-[#eab4cd]" /> A little more organised</span>
+          <h2 className="mt-7 text-[42px] leading-[1.15] font-medium tracking-tight xl:text-[52px]">Make room for<br />what matters.</h2>
+          <p className="mt-5 max-w-sm text-[15px] leading-7 text-white/80">Your schedule, reminders, and documents.<br />Together in one simple workspace.</p>
 
-          <div className="mt-12 hidden max-w-md lg:block">
-            <h2 className="text-[34px] leading-tight font-semibold tracking-tight">Never miss what matters on your schedule.</h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-white/90">
-              Record your meetings and tasks once. We&apos;ll remind you a day before, a few hours before, and right before it starts, by email and as a
-              notification on your phone.
-            </p>
-            <ul className="mt-10 space-y-4 text-sm text-white/95">
+          <div className="mt-10 rounded-2xl border border-white/15 bg-white/[0.07] p-5 backdrop-blur-sm">
+            <p className="flex items-center justify-between text-xs font-medium text-white/75">A calmer way to work<ArrowUpRight aria-hidden className="size-4" /></p>
+            <div className="mt-5 space-y-4">
               {[
-                [CalendarClock, "Repeating events: daily, weekdays, weekly, monthly"],
-                [BellRing, "Reminders 1 day, 5 hours, 1 hour and 15 minutes before"],
-                [ShieldCheck, "Private and secure: only you and your admin see your schedule"],
-              ].map(([Icon, text], i) => {
-                const I = Icon as typeof BellRing;
-                return (
-                  <li key={i} className="flex items-center gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
-                      <I className="size-4.5" />
-                    </span>
-                    {text as string}
-                  </li>
-                );
-              })}
-            </ul>
+                { icon: CalendarClock, title: "Plan your day", text: "Meetings, tasks, and appointments" },
+                { icon: BellRing, title: "Stay a step ahead", text: "Helpful reminders, right on time" },
+                { icon: FileSignature, title: "Keep work moving", text: "Send and sign documents easily" },
+              ].map(({ icon: Icon, title, text }) => (
+                <div key={title} className="flex items-center gap-3">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-[#f3d4e1]"><Icon aria-hidden className="size-[18px]" /></span>
+                  <div className="min-w-0 flex-1"><p className="text-sm font-medium">{title}</p><p className="mt-0.5 text-xs text-white/70">{text}</p></div>
+                  <Check aria-hidden className="size-4 text-[#eab4cd]" />
+                </div>
+              ))}
+            </div>
           </div>
-
-          {image?.credit && <p className="mt-10 hidden max-w-md text-xs text-white/85 lg:block">{image.credit}</p>}
         </div>
 
-        <main className="flex flex-col justify-center pb-6 lg:pb-0">
-          <div className="w-full rounded-3xl border border-border bg-surface p-6 text-text shadow-pop sm:p-8">{children}</div>
-          {image?.credit && <p className="mt-5 text-center text-xs text-white/85 lg:hidden">{image.credit}</p>}
+        <footer>
+          <p className="flex items-center gap-2 text-xs text-white/80"><ShieldCheck aria-hidden className="size-4" /> Your work, in a secure workspace.</p>
+          {image?.credit && <p className="mt-4 max-w-md text-[10px] leading-relaxed text-white/65">{image.credit}</p>}
+        </footer>
+      </aside>
+
+      <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+        <Link href="/" aria-label="Go to home" className="mx-2 mt-3 w-fit lg:hidden"><Logo /></Link>
+        <main id="auth-content" tabIndex={-1} className="flex flex-1 items-center justify-center px-1 py-10 outline-none sm:px-8 lg:py-12">
+          <div className="w-full max-w-[420px]">
+            <div className="mb-8 flex size-12 items-center justify-center rounded-2xl border border-border bg-surface text-primary shadow-card"><CalendarClock aria-hidden className="size-6" /></div>
+            {children}
+            <p className="mt-8 flex items-center justify-center gap-1.5 border-t border-border pt-6 text-xs text-faint"><ShieldCheck aria-hidden className="size-3.5" /> A secure space for your everyday work</p>
+          </div>
         </main>
+        <p className="pb-3 text-center text-xs text-faint">Plan simply. Work calmly.</p>
       </div>
     </div>
   );

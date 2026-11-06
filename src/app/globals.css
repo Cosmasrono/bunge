@@ -1,21 +1,22 @@
 @import "tailwindcss";
+@source "../";
 
 :root {
-  /* Brown is the brand colour, pink the accent. Every text/background pair below was checked for WCAG AA (4.5:1). */
-  --bg: #faf6f3;
+  /* Warm neutrals, cocoa branding, and a restrained pink accent. */
+  --bg: #f8f7f5;
   --surface: #ffffff;
-  --surface-2: #f5eee9;
-  --border: #e6d9d0;
-  --text: #2b1d17;
-  --muted: #6a5750;
-  --faint: #7a645a;
-  --primary: #7a4527;
-  --primary-hover: #653720;
-  --primary-soft: #f6ebe3;
+  --surface-2: #f3f0ed;
+  --border: #e8e3df;
+  --text: #30251f;
+  --muted: #71645c;
+  --faint: #796c63;
+  --primary: #75472f;
+  --primary-hover: #5c3522;
+  --primary-soft: #f3eae2;
   --primary-text: #ffffff;
-  --accent: #b8205f;
-  --accent-hover: #9d1a50;
-  --accent-soft: #fde8f0;
+  --accent: #a82f61;
+  --accent-hover: #8d244f;
+  --accent-soft: #f9eaf0;
   --accent-text: #ffffff;
   --success: #0b7a54;
   --success-soft: #e3f5ec;
@@ -23,9 +24,9 @@
   --warning-soft: #fdf1de;
   --danger: #c0282e;
   --danger-soft: #fdeaea;
-  --ring: rgb(122 69 39 / 0.35);
-  --shadow: 0 1px 2px rgb(43 29 23 / 0.05), 0 1px 3px rgb(43 29 23 / 0.07);
-  --shadow-lg: 0 12px 32px -12px rgb(43 29 23 / 0.22);
+  --ring: rgb(117 71 47 / 0.18);
+  --shadow: 0 2px 8px -4px rgb(48 37 31 / 0.09);
+  --shadow-lg: 0 14px 40px -16px rgb(48 37 31 / 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -93,13 +94,52 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
+  line-height: 1.6;
+}
+
+section[id] {
+  scroll-margin-top: 7rem;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+:where(a, button, summary):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+button:not(:disabled), summary, select {
+  cursor: pointer;
+}
+
+input[type="date"], input[type="time"], select {
+  min-width: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  transform: translateY(-160%);
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--primary-text);
+  padding: 12px 20px;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 @utility card {
   @apply rounded-2xl border border-border bg-surface shadow-card;
 }
 @utility btn {
-  @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-4 focus-visible:ring-(--ring) disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-4 focus-visible:ring-(--ring) disabled:cursor-not-allowed disabled:opacity-60;
 }
 @utility btn-primary {
   @apply btn bg-primary text-primary-text hover:bg-primary-hover;
@@ -120,10 +160,10 @@ body {
   @apply mb-1.5 block text-sm font-medium text-text;
 }
 @utility field-hint {
-  @apply mt-1.5 text-xs text-faint;
+  @apply mt-1.5 text-xs leading-relaxed text-faint;
 }
 @utility input {
-  @apply block h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-[15px] text-text transition outline-none placeholder:text-faint focus:border-primary focus:ring-4 focus:ring-(--ring);
+  @apply block h-12 w-full rounded-xl border border-border bg-surface px-3.5 text-base text-text transition outline-none placeholder:text-faint focus:border-primary focus:ring-4 focus:ring-(--ring) disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-faint;
 }
 @utility chip {
   @apply inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted;
@@ -131,4 +171,13 @@ body {
 
 textarea.input {
   @apply h-auto min-h-24 py-2.5 leading-relaxed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

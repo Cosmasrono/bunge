@@ -21,8 +21,8 @@ export function ProfileForm({ name, timezone, timezones }: { name: string; timez
           ))}
         </select>
       </Field>
-      <SubmitButton className="btn-primary" pendingText="Saving…">
-        Save
+      <SubmitButton className="btn-primary w-full sm:w-auto" pendingText="Saving…">
+        Save profile
       </SubmitButton>
     </form>
   );
@@ -37,14 +37,14 @@ export function PasswordForm() {
         <PasswordInput id="current" name="current" required autoComplete="current-password" />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="New password" htmlFor="password">
+        <Field label="New password" htmlFor="password" hint="At least 10 characters.">
           <PasswordInput id="password" name="password" required minLength={10} autoComplete="new-password" />
         </Field>
         <Field label="Confirm new password" htmlFor="confirm">
           <PasswordInput id="confirm" name="confirm" required minLength={10} autoComplete="new-password" />
         </Field>
       </div>
-      <SubmitButton className="btn-primary" pendingText="Changing…">
+      <SubmitButton className="btn-primary w-full sm:w-auto" pendingText="Changing…">
         Change password
       </SubmitButton>
     </form>

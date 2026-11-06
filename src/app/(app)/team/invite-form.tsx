@@ -13,7 +13,7 @@ export function InviteForm({ anyRole }: { anyRole: boolean }) {
   return (
     <form action={action} className="mt-5 space-y-5">
       <FormMessage error={state?.error} />
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4">
         <Field label="Full name" htmlFor="name">
           <input id="name" name="name" required maxLength={100} autoComplete="off" className="input" defaultValue={f?.name} />
         </Field>
@@ -26,7 +26,7 @@ export function InviteForm({ anyRole }: { anyRole: boolean }) {
         htmlFor="role"
         hint={
           role === "staff"
-            ? "Staff manage their own schedule and sign documents sent to them. You can also let them schedule for others or send documents."
+            ? "Manages their own schedule and signs documents. Choose any extra permissions below."
             : role === "director"
               ? "Directors manage people and permissions, schedule for others and send documents."
               : "Admins can do everything, including Settings."
@@ -49,26 +49,26 @@ export function InviteForm({ anyRole }: { anyRole: boolean }) {
         </select>
       </Field>
       {role === "staff" && (
-        <fieldset className="space-y-2 rounded-xl bg-surface-2/60 px-4 py-3 text-sm">
+        <fieldset className="space-y-1 rounded-xl border border-border px-4 py-3 text-sm">
           <legend className="sr-only">Permissions</legend>
-          <label className="flex items-start gap-3">
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 py-2">
             <input type="checkbox" name="canSchedule" defaultChecked={f?.canSchedule === "on"} className="mt-0.5 size-4 shrink-0 accent-(--primary)" />
             <span>
-              <span className="block font-medium">Can schedule events for others</span>
+              <span className="block font-medium">Schedule for others</span>
               <span className="block text-xs text-faint">Add, see and change events on anyone&apos;s schedule.</span>
             </span>
           </label>
-          <label className="flex items-start gap-3">
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 py-2">
             <input type="checkbox" name="canSendDocuments" defaultChecked={f?.canSendDocuments === "on"} className="mt-0.5 size-4 shrink-0 accent-(--primary)" />
             <span>
-              <span className="block font-medium">Can send documents for signing</span>
+              <span className="block font-medium">Send documents</span>
               <span className="block text-xs text-faint">Upload PDFs and choose who signs them.</span>
             </span>
           </label>
         </fieldset>
       )}
-      <SubmitButton pendingText="Sending invitation…" className="btn-primary">
-        <UserPlus className="size-4" /> Create account and email invitation
+      <SubmitButton pendingText="Sending invitation…" className="btn-primary w-full">
+        <UserPlus className="size-4" /> Send invitation
       </SubmitButton>
     </form>
   );

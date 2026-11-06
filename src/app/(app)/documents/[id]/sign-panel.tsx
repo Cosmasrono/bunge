@@ -1,9 +1,10 @@
 "use client";
 
-import { Eraser, MapPin, PenLine, Type, XCircle } from "lucide-react";
+import { Check, Circle, Eraser, MapPin, PenLine, Type, XCircle } from "lucide-react";
 import { useActionState, useRef, useState } from "react";
 import { declineDocument, signDocument } from "@/app/actions/documents";
 import { FormMessage, SubmitButton } from "@/components/form";
+import { SectionHeading } from "@/components/page-header";
 import type { Evidence } from "@/lib/evidence";
 import { SignatureBoxPicker, type Box } from "../new/signature-box-picker";
 
@@ -147,12 +148,11 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
   const ready = placed && agree && !locating && Boolean(evidence?.geo) && (mode === "drawn" ? hasInk : typed.trim().length >= 2);
 
   return (
-    <section className="card p-5 sm:p-6">
-      <h2 className="font-semibold">Sign this document</h2>
-      <p className="mt-1 text-sm text-muted">Read the document above. Then mark where your signature goes, and sign.</p>
-      <p className="mt-3 flex items-start gap-2 rounded-xl bg-warning-soft px-3 py-2.5 text-sm text-warning">
+    <section id="sign-document" className="card p-5 sm:p-6">
+      <SectionHeading icon={PenLine} title="Your signature" description="Read the document, choose a position, and add your signature below." />
+      <p className="flex items-start gap-2 rounded-xl bg-primary-soft px-4 py-3 text-sm text-primary">
         <MapPin className="mt-px size-4 shrink-0" />
-        Your location is required to sign. When you tick the box below, your browser asks for it: choose Allow.
+        Signing requires your location. Your browser will ask for permission when you agree below.
       </p>
 
       <form action={action} className="mt-5 space-y-5">
@@ -175,7 +175,7 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
 
         <h3 className="text-sm font-semibold">2. Your signature</h3>
 
-        <div role="tablist" aria-label="Signature type" className="inline-flex rounded-xl bg-surface-2 p-1 text-sm font-medium">
+        <div role="group" aria-label="Signature type" className="grid grid-cols-2 rounded-xl bg-surface-2 p-1 text-sm font-medium sm:inline-flex">
           {([
             ["drawn", "Draw", PenLine],
             ["typed", "Type", Type],
@@ -183,10 +183,9 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
             <button
               key={value}
               type="button"
-              role="tab"
-              aria-selected={mode === value}
+              aria-pressed={mode === value}
               onClick={() => setMode(value)}
-              className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 transition-colors ${
+              className={`flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-6 py-2 transition-colors ${
                 mode === value ? "bg-surface text-text shadow-card" : "text-muted hover:text-text"
               }`}
             >
@@ -195,8 +194,7 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
           ))}
         </div>
 
-        {mode === "drawn" ? (
-          <div>
+          <div hidden={mode !== "drawn"}>
             <div className="relative overflow-hidden rounded-xl border border-border bg-white">
               <canvas
                 ref={canvas}
@@ -220,8 +218,7 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
               <Eraser className="size-3.5" /> Clear
             </button>
           </div>
-        ) : (
-          <div>
+          <div hidden={mode !== "typed"}>
             <input
               name="typed"
               value={typed}
@@ -234,9 +231,9 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
             />
             <p className="field-hint">Your typed name will be used as your signature.</p>
           </div>
-        )}
 
-        <label className="flex items-start gap-3 text-sm">
+        <h3 className="text-sm font-semibold">3. Review and confirm</h3>
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 text-sm">
           <input
             type="checkbox"
             name="agree"
@@ -254,7 +251,7 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
         </label>
 
         {agree && (
-          <p className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+          <p role="status" className="-mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
             <MapPin className="size-4 shrink-0 text-faint" />
             {locating ? (
               "Getting your location… allow it when your browser asks."
@@ -275,7 +272,14 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
           </p>
         )}
 
-        {!placed && <p className="text-sm font-medium text-danger">Click on the document (step 1) to choose where your signature goes.</p>}
+        <ul aria-label="Ready to sign" className="grid grid-cols-1 gap-2 rounded-xl bg-surface-2 p-4 text-xs sm:grid-cols-2">
+          {[
+            { label: "Position selected", done: placed },
+            { label: "Signature added", done: mode === "drawn" ? hasInk : typed.trim().length >= 2 },
+            { label: "Consent confirmed", done: agree },
+            { label: "Location shared", done: Boolean(evidence?.geo) },
+          ].map(({ label, done }) => <li key={label} className={`flex items-center gap-2 ${done ? "text-success" : "text-muted"}`}>{done ? <Check aria-hidden className="size-3.5" /> : <Circle aria-hidden className="size-3.5" />}<span>{label}: {done ? "ready" : "needed"}</span></li>)}
+        </ul>
         <SubmitButton pendingText="Signing…" disabled={!ready}>
           Sign and submit
         </SubmitButton>
@@ -283,7 +287,7 @@ export function SignPanel({ documentId, signerName, userId, fixedBox }: { docume
 
       <div className="mt-6 border-t border-border pt-5">
         {!showDecline ? (
-          <button type="button" onClick={() => setShowDecline(true)} className="text-sm font-medium text-muted hover:text-danger">
+          <button type="button" onClick={() => setShowDecline(true)} className="btn-ghost px-0 hover:text-danger">
             I can&apos;t sign this document…
           </button>
         ) : (

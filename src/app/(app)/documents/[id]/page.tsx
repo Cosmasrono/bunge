@@ -1,7 +1,6 @@
-import { ArrowLeft, CalendarClock, CheckCircle2, Clock, Download, MapPin, ShieldCheck, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileText, MapPin, ShieldCheck, XCircle } from "lucide-react";
 import type { DocumentStatus, SignerStatus } from "@prisma/client";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cancelDocument } from "@/app/actions/documents";
 import { ConfirmSubmit, Flash } from "@/components/client-bits";
@@ -13,6 +12,7 @@ import { describeIpPlace, parsePlace, reverseGeocode } from "@/lib/geo";
 import { parseSignatureBox } from "@/lib/signature-box";
 import { finalizeIfComplete } from "@/lib/signing";
 import { SignPanel } from "./sign-panel";
+import { PageHeader, SectionHeading } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Document" };
 
@@ -79,20 +79,18 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
             : { label: "Waiting for your signature", style: STATUS_STYLE.pending };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {flashKey && <Flash message={FLASH[flashKey]} />}
 
-      <div>
-        <Link href="/documents" className="btn-ghost -ml-2 px-2">
-          <ArrowLeft className="size-4" /> Documents
-        </Link>
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-          <h1 className="min-w-0 text-2xl font-semibold tracking-tight break-words">{doc.title}</h1>
-          <span className={`chip mt-1.5 ${chip.style}`}>{chip.label}</span>
-        </div>
-      </div>
+      <PageHeader back={{ href: "/documents", label: "Documents" }} eyebrow={isSender ? "Track your request" : "Review and sign"} title={doc.title} description={isSender ? "View your document and keep track of signatures." : "Review the document and complete your signature below."} actions={<span className={`chip ${chip.style}`}>{chip.label}</span>} />
+      <nav aria-label="Document sections" className="flex flex-wrap gap-2">
+        <a href="#request-details" className="btn-secondary">Request details</a>
+        <a href="#document-preview" className="btn-secondary">View document</a>
+        {me?.status === "pending" && doc.status === "pending" && <a href="#sign-document" className="btn-primary">Add your signature</a>}
+      </nav>
 
-      <section className="card p-5 sm:p-6">
+      <section id="request-details" className="card p-5 sm:p-6">
+        <SectionHeading icon={FileText} title="Request details" />
         <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
           <Item label="From" value={`${doc.sender.name}${isSender ? " (you)" : ""}`} sub={doc.sender.email} />
           <Item label="Sent" value={fmt.format(doc.createdAt)} />
@@ -103,7 +101,8 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
           )}
         </dl>
 
-        <h2 className="mt-6 mb-2 text-xs font-medium text-faint">{!isSender ? "Your signature" : multi ? `Signers (${doc.signers.length})` : "Signer"}</h2>
+        <details className="group mt-6" open={visible.length <= 4}>
+        <summary className="mb-3 flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold">{!isSender ? "Your signing status" : multi ? `Signers (${doc.signers.length})` : "Signer"}<ChevronDown aria-hidden className="size-4 text-faint transition-transform group-open:rotate-180" /></summary>
         <ul className="divide-y divide-border rounded-xl border border-border">
           {visible.map((s, i) => {
             const box = parseSignatureBox(s.signatureBox);
@@ -133,6 +132,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
             );
           })}
         </ul>
+        </details>
 
         {doc.note && (
           <div className="mt-5 rounded-xl bg-surface-2 px-4 py-3 text-sm">
@@ -177,11 +177,11 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
 
         <div className="mt-5 flex flex-wrap gap-2">
           {hasSignedCopy && (
-            <a href={`${file}?v=signed&download=1`} className="btn-primary btn-sm">
+            <a href={`${file}?v=signed&download=1`} className="btn-primary">
               <Download className="size-3.5" /> {isSender ? "Download signed PDF" : "Download my signed copy"}
             </a>
           )}
-          <a href={`${file}?download=1`} className="btn-secondary btn-sm">
+          <a href={`${file}?download=1`} className="btn-secondary">
             <Download className="size-3.5" /> {hasSignedCopy ? "Original PDF" : "Download PDF"}
           </a>
           {isSender && doc.status === "pending" && (
@@ -196,8 +196,9 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
 
       {isSender && doc.signers.some((s) => s.status === "signed") && <SigningDetails doc={doc} fmt={fmt} />}
 
-      <section className="card overflow-hidden">
-        <iframe src={`${file}?v=${view}#view=FitH`} title={`${doc.title} (PDF)`} className="block h-[70vh] min-h-[420px] w-full bg-surface-2" />
+      <section id="document-preview" className="card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:px-6"><h2 className="flex items-center gap-2 text-sm font-semibold"><FileText aria-hidden className="size-4 text-primary" />{hasSignedCopy ? "Signed document" : "Document preview"}</h2><a href={`${file}?v=${view}`} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm"><ExternalLink aria-hidden className="size-3.5" />Open PDF</a></div>
+        <iframe src={`${file}?v=${view}#view=FitH`} title={`${doc.title} (PDF)`} className="block h-[65vh] min-h-[360px] w-full bg-surface-2" />
       </section>
 
       {me?.status === "pending" && doc.status === "pending" && (

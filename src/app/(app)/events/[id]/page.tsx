@@ -1,6 +1,6 @@
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { notFound } from "next/navigation";
 import { deleteEvent, deleteEventForAll, updateEvent } from "@/app/actions/events";
 import { getDb } from "@/db";
@@ -25,29 +25,7 @@ export default async function EditEventPage({ params }: PageProps<"/events/[id]"
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/" className="btn-ghost -ml-2 px-2">
-        <ArrowLeft className="size-4" /> Schedule
-      </Link>
-      <div className="mt-3 mb-6 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Edit event</h1>
-          {event.userId !== user.id && <p className="mt-1 text-sm text-muted">On {event.user.name}&apos;s schedule</p>}
-        </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          {batchCount !== undefined && batchCount > 1 && (
-            <form action={deleteEventForAll.bind(null, event.id)}>
-              <ConfirmSubmit message={`Delete "${event.title}" from all ${batchCount} schedules? Everyone is told it was cancelled. This can't be undone.`} className="btn-danger btn-sm">
-                <Trash2 className="size-3.5" /> Delete for everyone
-              </ConfirmSubmit>
-            </form>
-          )}
-          <form action={deleteEvent.bind(null, event.id)}>
-            <ConfirmSubmit message={`Delete "${event.title}"${batchCount && batchCount > 1 ? " from this schedule only" : ""}? This can't be undone.`} className="btn-danger btn-sm">
-              <Trash2 className="size-3.5" /> {batchCount && batchCount > 1 ? "Delete this copy" : "Delete"}
-            </ConfirmSubmit>
-          </form>
-        </div>
-      </div>
+      <PageHeader back={{ href: "/", label: "Schedule" }} eyebrow="Keep your plans up to date" title="Edit event" description={event.userId !== user.id ? `Update ${event.title} on ${event.user.name}'s schedule.` : `Update the details and reminders for ${event.title}.`} />
       <EventForm
         action={updateEvent.bind(null, event.id)}
         submitLabel="Save changes"
@@ -67,6 +45,20 @@ export default async function EditEventPage({ params }: PageProps<"/events/[id]"
           emailReminders: event.emailReminders,
         }}
       />
+      <section className="mt-8 rounded-2xl border border-danger/20 bg-surface p-5 sm:p-6">
+        <h2 className="font-semibold">Remove this event</h2>
+        <p className="mt-1 text-sm text-muted">Deleting an event also removes its reminders. This cannot be undone.</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <form action={deleteEvent.bind(null, event.id)}>
+            <ConfirmSubmit message={`Delete "${event.title}"${batchCount && batchCount > 1 ? " from this schedule only" : ""}? This can't be undone.`} className="btn-danger">
+              <Trash2 className="size-4" />{batchCount && batchCount > 1 ? "Delete this copy" : "Delete event"}
+            </ConfirmSubmit>
+          </form>
+          {batchCount !== undefined && batchCount > 1 && <form action={deleteEventForAll.bind(null, event.id)}>
+            <ConfirmSubmit message={`Delete "${event.title}" from all ${batchCount} schedules? Everyone is told it was cancelled. This can't be undone.`} className="btn-danger"><Trash2 className="size-4" />Delete for everyone ({batchCount})</ConfirmSubmit>
+          </form>}
+        </div>
+      </section>
     </div>
   );
 }

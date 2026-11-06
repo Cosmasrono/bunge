@@ -7,6 +7,7 @@ import { listSigners } from "@/lib/documents";
 import { uploadLimitBytes } from "@/lib/pdf";
 import { utcToWall } from "@/lib/time";
 import { NewDocumentForm } from "./new-document-form";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Send a document" };
 
@@ -29,11 +30,7 @@ export default async function NewDocumentPage() {
   const today = `${w.y}-${String(w.m).padStart(2, "0")}-${String(w.d).padStart(2, "0")}`;
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/documents" className="btn-ghost -ml-2 px-2">
-        <ArrowLeft className="size-4" /> Documents
-      </Link>
-      <h1 className="mt-3 mb-1 text-2xl font-semibold tracking-tight">Send a document for signature</h1>
-      <p className="mb-6 text-sm text-muted">Choose one or more people to sign it online. Each gets a notification, and you get the signed copy back once everyone has signed.</p>
+      <PageHeader back={{ href: "/documents", label: "Documents" }} eyebrow="From request to signed" title="Send a document" description="Choose a file, select your signers, and we'll keep everyone updated." />
       <NewDocumentForm signers={signers} meId={user.id} maxBytes={uploadLimitBytes()} today={today} />
     </div>
   );

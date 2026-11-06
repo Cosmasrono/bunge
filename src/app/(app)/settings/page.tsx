@@ -1,9 +1,10 @@
-import { CheckCircle2, CircleAlert, Clock, Mail } from "lucide-react";
+import { CheckCircle2, ChevronDown, CircleAlert, Clock, Mail } from "lucide-react";
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth/session";
 import { APP_URL, mailSummary } from "@/lib/mail";
 import { lastReminderRun } from "@/lib/reminders";
 import { TestEmailForm } from "./test-email";
+import { PageHeader, SectionHeading, SectionNav } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -26,29 +27,31 @@ export default async function SettingsPage() {
   const fmt = new Intl.DateTimeFormat("en-GB", { timeZone: user.timezone, day: "numeric", month: "short", hour: "numeric", minute: "2-digit", second: "2-digit" });
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+    <div className="mx-auto max-w-5xl">
+      <PageHeader eyebrow="Workspace preferences" title="Settings" description="Keep your workspace's email and reminders running smoothly." />
+      <div className="grid items-start gap-6 lg:grid-cols-[160px_minmax(0,1fr)] lg:gap-8">
+      <SectionNav items={[{ id: "email", label: "Email", icon: Mail }, { id: "reminders", label: "Reminders", icon: Clock }]} />
+      <div className="min-w-0 space-y-6">
 
-      <section className="card p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
-              <Mail className="size-4.5" />
-            </span>
-            <h2 className="font-semibold">Email</h2>
-          </div>
+      <section id="email" className="card p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionHeading icon={Mail} title="Email delivery" description="For reminders, invitations, and document requests." />
           <Status ok={mail.configured}>{mail.configured ? "Connected" : "Not set up"}</Status>
         </div>
         {mail.configured ? (
-          <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+          <dl className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-3 rounded-xl bg-surface-2 p-4 text-sm">
             <dt className="text-muted">Server</dt>
-            <dd className="font-mono text-[13px]">{mail.host}</dd>
+            <dd className="font-mono text-[13px] break-all">{mail.host}</dd>
             <dt className="text-muted">Sends from</dt>
             <dd className="font-mono text-[13px] break-all">{mail.from}</dd>
           </dl>
         ) : (
-          <div className="mt-4 text-sm leading-relaxed text-muted">
-            <p>Add your email credentials to the server settings, then restart:</p>
+          <div className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning"><p>Connect an email account to send reminders and invitations.</p></div>
+        )}
+        <details className="group mt-5 rounded-xl border border-border">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium">Email setup instructions<ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform group-open:rotate-180" /></summary>
+          <div className="border-t border-border p-4 text-sm leading-relaxed text-muted">
+            <p>Add these values to your server settings, then restart the app:</p>
             <pre className="mt-3 overflow-x-auto rounded-xl bg-surface-2 p-4 font-mono text-[12.5px] leading-6 text-text">
 {`SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
@@ -61,21 +64,16 @@ MAIL_FROM="PRS <you@gmail.com>"`}
               Variables. Passwords are never shown on this page.
             </p>
           </div>
-        )}
+        </details>
         <TestEmailForm disabled={!mail.configured} email={user.email} />
       </section>
 
-      <section className="card p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary">
-              <Clock className="size-4.5" />
-            </span>
-            <h2 className="font-semibold">Reminder checker</h2>
-          </div>
-          <Status ok={checkerOk}>{checkerOk ? "Running" : run ? "Not running recently" : "Never ran"}</Status>
+      <section id="reminders" className="card p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionHeading icon={Clock} title="Scheduled reminders" description="Checks your schedule and sends reminders when they're due." />
+          <Status ok={checkerOk}>{checkerOk ? "Running" : run ? "Needs attention" : "Not started"}</Status>
         </div>
-        <p className="mt-4 text-sm text-muted">
+        <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm text-muted">
           {run ? (
             <>
               Last check: <b className="text-text">{fmt.format(new Date(run.at))}</b> ({lastRunAgoMin} min ago) · sent {run.sent}
@@ -92,12 +90,19 @@ MAIL_FROM="PRS <you@gmail.com>"`}
             ))}
           </ul>
         ) : null}
-        <p className="mt-4 text-sm leading-relaxed text-muted">
+        <details className="group mt-5 rounded-xl border border-border">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium">Reminder setup instructions<ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform group-open:rotate-180" /></summary>
+        <div className="border-t border-border p-4">
+        <p className="text-sm leading-relaxed text-muted">
           Online, a free scheduler (cron-job.org) should call this address every minute with the header{" "}
           <code className="font-mono text-[12.5px]">Authorization: Bearer &lt;CRON_SECRET&gt;</code>:
         </p>
         <pre className="mt-2 overflow-x-auto rounded-xl bg-surface-2 p-3 font-mono text-[12.5px]">{APP_URL}/api/cron/reminders</pre>
+        </div>
+        </details>
       </section>
+      </div>
+      </div>
     </div>
   );
 }

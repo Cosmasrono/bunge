@@ -1,9 +1,11 @@
 "use client";
 
-import { BellRing, Check } from "lucide-react";
+import { BellRing, CalendarClock, CalendarDays, Check, ChevronDown, MapPin } from "lucide-react";
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import type { FormState } from "@/app/actions/auth";
 import { Field, FormMessage, SubmitButton } from "@/components/form";
+import { SectionHeading } from "@/components/page-header";
 
 type Option = { value: string; label: string };
 
@@ -62,6 +64,7 @@ export function EventForm({
       <FormMessage error={state?.error} />
 
       <div className="card space-y-5 p-5 sm:p-6">
+        <SectionHeading icon={CalendarDays} title="Event details" description="Give your event a name and choose whose schedule it belongs to." />
         {people && (
           <Field
             label="Whose schedule?"
@@ -97,7 +100,7 @@ export function EventForm({
             </select>
           </Field>
         )}
-        <Field label="What" htmlFor="title">
+        <Field label="Event title" htmlFor="title">
           <input
             id="title"
             name="title"
@@ -110,8 +113,11 @@ export function EventForm({
           />
         </Field>
 
+      </div>
+      <div className="card space-y-5 p-5 sm:p-6">
+        <SectionHeading icon={CalendarClock} title="Date and time" description="Choose when it starts and how often it repeats." />
         <div>
-          <div className="grid grid-cols-[1.4fr_1fr] gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Date" htmlFor="date">
               <input id="date" name="date" type="date" required className="input" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
@@ -125,7 +131,8 @@ export function EventForm({
                 key={q.label}
                 type="button"
                 onClick={() => setDate(q.date)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                aria-pressed={date === q.date}
+                className={`rounded-full border px-3 py-2 text-xs font-medium transition-colors ${
                   date === q.date ? "border-primary bg-primary-soft text-primary" : "border-border text-muted hover:bg-surface-2"
                 }`}
               >
@@ -145,15 +152,24 @@ export function EventForm({
             ))}
           </select>
         </Field>
+      </div>
 
-        <Field label="Where (optional)" htmlFor="location">
+      <details className="group card" open={Boolean(initial.location || initial.notes)}>
+        <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"><MapPin aria-hidden className="size-[18px]" /></span>
+          <span className="flex-1"><span className="block font-semibold">Location and notes</span><span className="block text-sm text-muted">Optional details for the people attending.</span></span>
+          <ChevronDown aria-hidden className="size-4 shrink-0 text-faint transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="space-y-5 border-t border-border p-5 sm:p-6">
+        <Field label="Location (optional)" htmlFor="location">
           <input id="location" name="location" maxLength={200} className="input" placeholder="Office, Zoom link, address…" defaultValue={f?.location ?? initial.location} />
         </Field>
 
         <Field label="Notes (optional)" htmlFor="notes">
           <textarea id="notes" name="notes" maxLength={2000} className="input" placeholder="Agenda, things to bring…" defaultValue={f?.notes ?? initial.notes} />
         </Field>
-      </div>
+        </div>
+      </details>
 
       <div className="card p-5 sm:p-6">
         <label className="flex cursor-pointer items-center justify-between gap-4">
@@ -163,7 +179,7 @@ export function EventForm({
             </span>
             <span>
               <span className="block font-semibold">Reminders</span>
-              <span className="block text-sm text-muted">By email, and as a notification on phones and computers that turned it on.</span>
+              <span className="block text-sm text-muted">Get a reminder before the event starts.</span>
             </span>
           </span>
           <input type="checkbox" name="emailReminders" checked={remind} onChange={(e) => setRemind(e.target.checked)} className="peer sr-only" />
@@ -175,7 +191,7 @@ export function EventForm({
 
         {remind && (
           <fieldset className="mt-5">
-            <legend className="mb-2.5 text-sm font-medium">Remind</legend>
+            <legend className="mb-2.5 text-sm font-medium">Remind me before</legend>
             <div className="flex flex-wrap gap-2">
               {leadOptions.map((o) => {
                 const on = leads.includes(o.minutes);
@@ -193,6 +209,7 @@ export function EventForm({
                 );
               })}
             </div>
+            <p className="field-hint">Sent by email and to devices with notifications enabled.</p>
           </fieldset>
         )}
       </div>
@@ -209,7 +226,8 @@ export function EventForm({
         </label>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <Link href="/" className="btn-ghost">Cancel</Link>
         <SubmitButton className="btn-primary w-full sm:w-auto sm:px-8" pendingText="Saving…">
           {submitLabel}
         </SubmitButton>

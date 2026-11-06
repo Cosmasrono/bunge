@@ -188,7 +188,7 @@ export function SignatureBoxPicker({
           )}
           {!blank && failed === source && <p className="text-sm text-danger">This PDF can&apos;t be previewed, so the signature will go on the certificate page only.</p>}
 
-          {pageCount > 0 && signers.length === 0 && <p className="text-sm text-muted">Choose who signs (below) to mark where each signature goes.</p>}
+          {pageCount > 0 && signers.length === 0 && <p className="text-sm text-muted">Choose at least one signer to mark where their signature goes.</p>}
           {pageCount > 0 && signers.length > 0 && (
             <>
               {signers.length > 1 && (
@@ -218,7 +218,7 @@ export function SignatureBoxPicker({
                     aria-label="Page"
                     value={page}
                     onChange={(e) => setChosenPage(Number(e.target.value))}
-                    className="input h-9 w-auto py-0 pr-8 text-sm"
+                    className="input h-11 w-auto py-0 pr-8 text-sm"
                   >
                     {Array.from({ length: pageCount }, (_, i) => (
                       <option key={i} value={i} className="bg-surface text-text">
@@ -235,7 +235,7 @@ export function SignatureBoxPicker({
                       type="button"
                       onClick={() => resize(i)}
                       aria-pressed={size === i}
-                      className={`rounded-md px-2.5 py-1 text-xs font-medium ${size === i ? "bg-primary text-primary-text" : "text-muted hover:text-text"}`}
+                      className={`min-h-10 rounded-md px-2.5 py-2 text-xs font-medium ${size === i ? "bg-primary text-primary-text" : "text-muted hover:text-text"}`}
                     >
                       {s.label}
                     </button>
@@ -279,7 +279,7 @@ export function SignatureBoxPicker({
                   >
                     {!optional && !fixedBox && !box && (
                       <div className="pointer-events-none absolute inset-x-4 top-1/2 flex -translate-y-1/2 items-center justify-center">
-                        <span className="flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-text shadow-pop">
+                        <span className="flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-center text-xs font-semibold text-accent-text shadow-pop sm:text-sm">
                           <MousePointerClick className="size-4" /> Click where your signature goes
                         </span>
                       </div>

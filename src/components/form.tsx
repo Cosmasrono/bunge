@@ -44,7 +44,8 @@ export function PasswordInput(props: ComponentProps<"input">) {
         onClick={() => setShow((s) => !s)}
         className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-faint hover:text-muted"
         aria-label={show ? "Hide password" : "Show password"}
-        tabIndex={-1}
+        aria-pressed={show}
+        aria-controls={props.id}
       >
         {show ? <EyeOff className="size-4.5" /> : <Eye className="size-4.5" />}
       </button>
