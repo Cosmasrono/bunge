@@ -51,7 +51,19 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </aside>
 
       <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
-        <Link href="/" aria-label="Go to home" className="mx-2 mt-3 w-fit lg:hidden"><Logo /></Link>
+        {/* Phones and tablets: the side panel is hidden, so the photo becomes a banner above the form. */}
+        <div className="relative isolate flex h-48 flex-col justify-between overflow-hidden rounded-[24px] bg-[#39271f] p-5 text-white sm:h-56 sm:p-6 lg:hidden">
+          {image && (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- already a small pre-compressed WebP made for phones */}
+              <img src={image.srcSm} alt={image.alt} fetchPriority="high" decoding="async" className="absolute inset-0 -z-20 size-full object-cover" />
+              {/* Darker towards the bottom, where the headline sits, so white text stays readable on any part of the photo. */}
+              <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(38,25,19,0.55),rgba(38,25,19,0.85))]" />
+            </>
+          )}
+          <Link href="/" aria-label="Go to home" className="w-fit"><Logo className="text-white" /></Link>
+          <p className="text-2xl leading-tight font-medium tracking-tight sm:text-3xl">Make room for what matters.</p>
+        </div>
         <main id="auth-content" tabIndex={-1} className="flex flex-1 items-center justify-center px-1 py-10 outline-none sm:px-8 lg:py-12">
           <div className="w-full max-w-[420px]">
             <div className="mb-8 flex size-12 items-center justify-center rounded-2xl border border-border bg-surface text-primary shadow-card"><CalendarClock aria-hidden className="size-6" /></div>
@@ -60,6 +72,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
         </main>
         <p className="pb-3 text-center text-xs text-faint">Plan simply. Work calmly.</p>
+        {image?.credit && <p className="px-2 pb-3 text-center text-[10px] leading-relaxed text-faint lg:hidden">{image.credit}</p>}
       </div>
     </div>
   );
