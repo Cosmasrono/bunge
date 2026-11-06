@@ -122,7 +122,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
                         ? `Declined${s.declineReason ? `: ${s.declineReason}` : ""}`
                         : box
                           ? `Signs on page ${box.page + 1}`
-                          : "Signs on the certificate page"}
+                          : "Chooses the spot when signing"}
                   </span>
                 </span>
                 <span className={`chip ${SIGNER_STYLE[s.status]}`}>
@@ -200,7 +200,9 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
         <iframe src={`${file}?v=${view}#view=FitH`} title={`${doc.title} (PDF)`} className="block h-[70vh] min-h-[420px] w-full bg-surface-2" />
       </section>
 
-      {me?.status === "pending" && doc.status === "pending" && <SignPanel documentId={doc.id} signerName={user.name} />}
+      {me?.status === "pending" && doc.status === "pending" && (
+        <SignPanel documentId={doc.id} signerName={user.name} userId={user.id} fixedBox={parseSignatureBox(me.signatureBox)} />
+      )}
 
       {isSender && doc.status === "pending" && waitingFor.some((s) => s.userId !== user.id) && (
         <p className="flex items-center gap-2 text-sm text-muted">

@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { getDb } from "@/db";
 import { mailConfigured, sendEmail } from "@/lib/mail";
 import { sendPushToUser } from "@/lib/push";
@@ -24,10 +25,13 @@ export async function notifyUser(userId: string, notice: { title: string; body: 
   ]);
 }
 
+/** Not read yet. In MongoDB a never-set field is missing, and `readAt: null` alone wouldn't match it. */
+export const UNREAD = { OR: [{ readAt: null }, { readAt: { isSet: false } }] } satisfies Prisma.NoticeWhereInput;
+
 /** Unread notices for the pop-ups, newest last. */
 export async function unreadNotices(userId: string) {
   return getDb().notice.findMany({
-    where: { userId, readAt: null },
+    where: { userId, ...UNREAD },
     orderBy: { createdAt: "asc" },
     take: 10,
     select: { id: true, title: true, body: true, url: true, createdAt: true },

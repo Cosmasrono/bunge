@@ -2,7 +2,9 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteEvent, updateEvent } from "@/app/actions/events";
+import { deleteEvent, deleteEventForAll, updateEvent } from "@/app/actions/events";
+import { getDb } from "@/db";
+import { canScheduleForOthers } from "@/lib/auth/permissions";
 import { ConfirmSubmit } from "@/components/client-bits";
 import { EventForm } from "@/components/event-form";
 import { requireUser } from "@/lib/auth/session";
@@ -18,6 +20,8 @@ export default async function EditEventPage({ params }: PageProps<"/events/[id]"
   if (!event) notFound();
   const o = eventFormOptions(event.timezone);
   const [date, time] = event.startLocal.split("T");
+  // One copy of an event added for a group: people who schedule for others can change or delete all copies.
+  const batchCount = event.batchId && canScheduleForOthers(user) ? await getDb().event.count({ where: { batchId: event.batchId } }) : undefined;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -29,11 +33,20 @@ export default async function EditEventPage({ params }: PageProps<"/events/[id]"
           <h1 className="text-2xl font-semibold tracking-tight">Edit event</h1>
           {event.userId !== user.id && <p className="mt-1 text-sm text-muted">On {event.user.name}&apos;s schedule</p>}
         </div>
-        <form action={deleteEvent.bind(null, event.id)}>
-          <ConfirmSubmit message={`Delete "${event.title}"? This can't be undone.`} className="btn-danger btn-sm">
-            <Trash2 className="size-3.5" /> Delete
-          </ConfirmSubmit>
-        </form>
+        <div className="flex flex-wrap justify-end gap-2">
+          {batchCount !== undefined && batchCount > 1 && (
+            <form action={deleteEventForAll.bind(null, event.id)}>
+              <ConfirmSubmit message={`Delete "${event.title}" from all ${batchCount} schedules? Everyone is told it was cancelled. This can't be undone.`} className="btn-danger btn-sm">
+                <Trash2 className="size-3.5" /> Delete for everyone
+              </ConfirmSubmit>
+            </form>
+          )}
+          <form action={deleteEvent.bind(null, event.id)}>
+            <ConfirmSubmit message={`Delete "${event.title}"${batchCount && batchCount > 1 ? " from this schedule only" : ""}? This can't be undone.`} className="btn-danger btn-sm">
+              <Trash2 className="size-3.5" /> {batchCount && batchCount > 1 ? "Delete this copy" : "Delete"}
+            </ConfirmSubmit>
+          </form>
+        </div>
       </div>
       <EventForm
         action={updateEvent.bind(null, event.id)}
@@ -42,6 +55,7 @@ export default async function EditEventPage({ params }: PageProps<"/events/[id]"
         leadOptions={o.leadOptions}
         repeatOptions={o.repeatOptions}
         quickDates={o.quickDates}
+        batchCount={batchCount}
         initial={{
           title: event.title,
           date,

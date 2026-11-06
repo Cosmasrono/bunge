@@ -27,7 +27,9 @@ export function EventForm({
   submitLabel,
   timezone,
   people,
+  groups,
   forDefault,
+  batchCount,
 }: {
   action: (state: FormState, form: FormData) => Promise<FormState>;
   initial: EventFormValues;
@@ -38,13 +40,20 @@ export function EventForm({
   timezone: string;
   /** Admins adding a new event: who's schedule it goes on (defaults to themselves). */
   people?: { id: string; name: string; role: string }[];
+  /** "Everyone", "All directors", "All staff" with how many people each adds the event for. */
+  groups?: { value: string; label: string; count: number }[];
   forDefault?: string;
+  /** Editing one copy of an event that was added for a group: how many people have it. */
+  batchCount?: number;
 }) {
   const [state, formAction] = useActionState(action, undefined);
   const f = state?.fields;
   const [date, setDate] = useState(f?.date ?? initial.date);
   const [leads, setLeads] = useState<number[]>(f?.leads !== undefined ? f.leads.split(",").filter(Boolean).map(Number) : initial.leads);
   const [remind, setRemind] = useState(f ? f.emailReminders === "on" : initial.emailReminders);
+
+  const [forValue, setForValue] = useState(f?.forUserId ?? forDefault ?? "");
+  const chosenGroup = groups?.find((g) => g.value === forValue);
 
   const toggle = (m: number) => setLeads((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]));
 
@@ -54,16 +63,37 @@ export function EventForm({
 
       <div className="card space-y-5 p-5 sm:p-6">
         {people && (
-          <Field label="Whose schedule?" htmlFor="forUserId" hint="They get the reminders and see it in their schedule. Its time is in their time zone.">
-            <select id="forUserId" name="forUserId" className="input" defaultValue={f?.forUserId ?? forDefault ?? ""}>
+          <Field
+            label="Whose schedule?"
+            htmlFor="forUserId"
+            hint={
+              chosenGroup
+                ? `Added to the schedules of ${chosenGroup.count} ${chosenGroup.count === 1 ? "person" : "people"}, at this time in your time zone. Each of them gets a notification and their own reminders.`
+                : forValue
+                  ? "They get a notification and the reminders, and see it in their schedule. Its time is in their time zone."
+                  : "Only on your own schedule."
+            }
+          >
+            <select id="forUserId" name="forUserId" className="input" value={forValue} onChange={(e) => setForValue(e.target.value)}>
               <option value="" className="bg-surface text-text">
                 Mine
               </option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id} className="bg-surface text-text">
-                  {p.name} ({p.role})
-                </option>
-              ))}
+              {groups && groups.length > 0 && (
+                <optgroup label="Several people">
+                  {groups.map((g) => (
+                    <option key={g.value} value={g.value} disabled={!g.count} className="bg-surface text-text">
+                      {g.label} ({g.count})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="One person">
+                {people.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-surface text-text">
+                    {p.name} ({p.role})
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </Field>
         )}
@@ -166,6 +196,18 @@ export function EventForm({
           </fieldset>
         )}
       </div>
+
+      {batchCount !== undefined && batchCount > 1 && (
+        <label className="card flex items-start gap-3 p-4 text-sm">
+          <input type="checkbox" name="applyToAll" defaultChecked className="mt-0.5 size-4 shrink-0 accent-(--primary)" />
+          <span>
+            <span className="block font-medium">Apply these changes for everyone ({batchCount} people)</span>
+            <span className="block text-xs text-faint">
+              This event is on {batchCount} people&apos;s schedules. Title, time, place, notes and repeat change for all of them; each person keeps their own reminder settings.
+            </span>
+          </span>
+        </label>
+      )}
 
       <div className="flex justify-end">
         <SubmitButton className="btn-primary w-full sm:w-auto sm:px-8" pendingText="Saving…">

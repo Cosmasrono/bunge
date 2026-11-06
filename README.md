@@ -151,6 +151,11 @@ Public sign-up is **off** by default, because accounts are created on the Team p
 **Viewing someone's schedule:** people who may schedule for others see a row of names above their Schedule. Pick a person
 to see their schedule; **New event** then adds to theirs. The event form also has *Whose schedule?*.
 
+**Events for everyone:** in *Whose schedule?* choose **Everyone**, **All directors** or **All staff**. The event is put on each
+of their schedules (one copy each, at the same moment, shown in each person's time zone), and each person gets a notification
+(pop-up, push and email) and their own reminders. Opening any copy later offers **Apply these changes for everyone** (each
+person keeps their own reminder settings) and **Delete for everyone** (everyone is told it was cancelled).
+
 ## Notifications (phone and computer pop-ups)
 
 Reminders go out two ways: a **push notification** to every phone or computer the person turned it on for, and an
@@ -186,6 +191,9 @@ Admins and directors can send a document to one or more people to sign (includin
    **Mark where each signature goes:** the form shows the PDF's pages; with several signers, pick a name under
    *Placing for* (or just click: it moves to the next person after each click) and click their signature line.
    Small / Medium / Large sets the size. Pages turned sideways aren't supported for this.
+   **Or let each signer choose:** anyone you don't mark must click on the document where their own signature goes
+   before they can sign (for example the line above their name). A spot you marked is fixed: the signer sees it but
+   can't move it.
 2. **Signing deadline (optional):** tick *Add a signing deadline to everyone's schedule* and pick a date and time. Each
    signer gets a "Sign: …" event on their schedule with the usual reminders (1 day, 5 hours, 1 hour and 15 minutes
    before). The event is removed once they sign or decline, or when the document is cancelled.
@@ -228,7 +236,10 @@ their own signature and certificate page. Emails to signers never name the other
 - **Passwords** are hashed with argon2id (never stored readable). At least 10 characters; common passwords are refused.
 - **Sessions** live on the server. The browser only holds a random token in an `HttpOnly`, `Secure`, `SameSite=Lax`
   cookie (`__Host-` prefixed online), so scripts can't read it. Sign-out ends the session everywhere it's
-  used; changing your password signs out your other devices. Sessions end after 14 idle days (30 days at most).
+  used; changing your password signs out your other devices. **Inactivity sign-out:** after 30 minutes without
+  activity (clicks, typing, scrolling, mouse movement) you are signed out, with a one-minute warning and a **Stay signed in**
+  button. Activity in any open tab counts for all of them; automatic page refreshes don't count. Change the time with
+  `SESSION_IDLE_MINUTES` (for example `10`). Sessions always end after 30 days.
 - **Brute-force protection**: 5 wrong attempts per email (30 per IP) in 15 minutes locks sign-in for 15 minutes.
   The error message is the same whether or not an email exists.
 - **First admin** is whoever creates the first account (email confirmed with a code); after that, the setup page is closed.

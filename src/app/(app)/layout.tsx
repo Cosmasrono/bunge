@@ -3,7 +3,8 @@ import { logout } from "@/app/actions/auth";
 import { Logo } from "@/components/logo";
 import { NavLinks } from "@/components/nav";
 import { NoticePopups } from "@/components/notice-popups";
-import { requireUser } from "@/lib/auth/session";
+import { IdleTimer } from "@/components/idle-timer";
+import { IDLE_MS, requireUser } from "@/lib/auth/session";
 
 function initials(name: string) {
   const p = name.trim().split(/\s+/);
@@ -49,6 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </header>
 
       <main className="mx-auto w-full max-w-4xl px-4 pt-6 pb-28 sm:px-6 lg:px-10 lg:pt-10 lg:pb-16">{children}</main>
+      <IdleTimer idleMs={IDLE_MS} />
 
       <NoticePopups />
 

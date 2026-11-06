@@ -212,7 +212,7 @@ async function addCertificatePage(
 }
 
 /**
- * Draws the signature into the box the sender marked, plus a small "Signed electronically by …" line under it.
+ * Draws the signature, and only the signature, into the box chosen for it.
  * Returns the page index it was placed on, or null when there is no box (or the page is rotated, which isn't supported).
  */
 async function stampSignature(
@@ -234,10 +234,10 @@ async function stampSignature(
   const by = crop.y + (1 - box.y - box.h) * crop.height;
 
   const ink = rgb(0.08, 0.1, 0.32); // dark blue, like a pen
-  const captionSize = Math.max(5, Math.min(7, bh * 0.11));
-  const showCaption = bh >= 30 && bw >= 90;
-  const captionH = showCaption ? captionSize * 2 + 5 : 0;
-  const area = { x: bx + 3, y: by + captionH + 1, w: bw - 6, h: bh - captionH - 3 };
+  // Only the signature goes on the document itself: no caption, so nothing lands on the document's own text
+  // (labels like "Signature" or "Date"). Who signed, when and where is on the certificate pages at the end.
+  void reference;
+  const area = { x: bx + 2, y: by + 2, w: bw - 4, h: bh - 4 };
 
   if (opts.signature.kind === "drawn") {
     const img = await pdf.embedPng(opts.signature.png);
@@ -247,24 +247,11 @@ async function stampSignature(
     target.drawImage(img, { x: area.x + (area.w - w) / 2, y: area.y + (area.h - h) / 2, width: w, height: h });
   } else {
     const text = opts.signature.text;
-    let size = Math.min(40, area.h * 0.75);
+    let size = Math.min(28, area.h * 0.75); // a normal signature size, even in a big box
     while (size > 6 && fonts.script.widthOfTextAtSize(text, size) > area.w) size -= 1;
     const tw = fonts.script.widthOfTextAtSize(text, size);
     target.drawText(text, { x: area.x + (area.w - tw) / 2, y: area.y + (area.h - size * 0.7) / 2, size, font: fonts.script, color: ink });
   }
 
-  if (showCaption) {
-    const when = new Intl.DateTimeFormat("en-GB", { timeZone: opts.timezone, dateStyle: "medium", timeStyle: "short" }).format(opts.signedAt);
-    const lines = [`Signed electronically by ${opts.name}`, `${when}${reference ? ` · Ref ${reference}` : ""} · see last pages`];
-    lines.forEach((line, i) => {
-      target.drawText(fit(line, fonts.regular, captionSize, bw - 6), {
-        x: bx + 3,
-        y: by + 2 + (lines.length - 1 - i) * (captionSize + 2),
-        size: captionSize,
-        font: fonts.regular,
-        color: rgb(0.35, 0.35, 0.42),
-      });
-    });
-  }
   return box.page;
 }

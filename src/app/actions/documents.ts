@@ -209,7 +209,7 @@ async function myOpenRow(documentId: string, userId: string) {
     where: { documentId, userId, status: "pending", document: { status: "pending" } },
     include: {
       document: {
-        select: { id: true, title: true, sender: { select: { id: true, name: true, email: true } }, signers: { select: { status: true, userId: true } } },
+        select: { id: true, title: true, pageCount: true, sender: { select: { id: true, name: true, email: true } }, signers: { select: { status: true, userId: true } } },
       },
     },
   });
@@ -243,6 +243,18 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
   if (!evidence.geo) {
     return { error: "Your location is required to sign. Allow location access for this site in your browser, then press Try again." };
   }
+  // Where the signature goes: the spot the sender marked, or else the one this signer clicked (required).
+  let chosenBox: SignatureBox | null = null;
+  if (!parseSignatureBox(row.signatureBox)) {
+    try {
+      const raw = String(form.get("signatureBoxes") ?? "");
+      chosenBox = raw && raw.length < 2000 ? parseSignatureBox((JSON.parse(raw) as Record<string, unknown>)[user.id]) : null;
+    } catch {
+      chosenBox = null;
+    }
+    if (!chosenBox) return { error: "Click on the document to choose where your signature goes, then sign again." };
+    if (chosenBox.page >= doc.pageCount) return { error: "That spot is on a page this document doesn't have. Choose it again." };
+  }
   if (!(await allowAttempt(`docsign:${user.id}`, 30, 3600))) return { error: "Too many attempts. Please wait a while." };
 
   const { ip, userAgent } = await clientInfo();
@@ -261,6 +273,7 @@ export async function signDocument(documentId: string, _: FormState, form: FormD
       agent: userAgent,
       evidence,
       place: JSON.parse(JSON.stringify(place)),
+      ...(chosenBox ? { signatureBox: chosenBox } : {}),
     },
   });
   if (!count) return { error: "You already answered this document." };

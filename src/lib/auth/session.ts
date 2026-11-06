@@ -10,8 +10,13 @@ const isProd = process.env.NODE_ENV === "production";
 /** `__Host-` cookies must be Secure, path "/", and can't be set for other domains. */
 export const SESSION_COOKIE = isProd ? "__Host-nd_session" : "nd_session";
 
-const IDLE_DAYS = 14; // signed out after 14 days without using the app
-const MAX_DAYS = 30; // and always after 30 days
+/**
+ * Signed out after this long without activity (clicks, typing, scrolling): 30 minutes unless SESSION_IDLE_MINUTES
+ * says otherwise (1 minute to 14 days). The browser shows a warning a minute before. Always signed out after 30 days.
+ */
+const IDLE_MINUTES = Math.min(20_160, Math.max(1, Math.round(Number(process.env.SESSION_IDLE_MINUTES) || 30)));
+export const IDLE_MS = IDLE_MINUTES * 60_000;
+const MAX_DAYS = 30;
 const DAY = 86_400_000;
 
 export async function createSession(userId: string) {
@@ -22,7 +27,7 @@ export async function createSession(userId: string) {
     data: {
       id: sha256(token),
       userId,
-      expiresAt: new Date(now + IDLE_DAYS * DAY),
+      expiresAt: new Date(now + IDLE_MS),
       ip,
       userAgent,
     },
@@ -52,19 +57,23 @@ export const getCurrentUser = cache(async () => {
     await db.session.deleteMany({ where: { id } });
     return null;
   }
-  // Slide the idle timeout, at most once an hour.
-  if (now.getTime() - session.lastSeenAt.getTime() > 3_600_000) {
-    await db.session.updateMany({
-      where: { id },
-      data: { lastSeenAt: now, expiresAt: new Date(now.getTime() + IDLE_DAYS * DAY) },
-    });
-  }
+  // The idle timeout is NOT extended here: automatic page refreshes would keep an unattended screen signed in.
+  // It is extended by touchSession(), which the browser calls while the person is actually using the app.
   const { passwordHash: _omit, ...user } = session.user;
   void _omit;
   return { ...user, sessionId: id };
 });
 
 export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
+
+/** The person is active: push the idle sign-out back (written at most every 30 seconds). */
+export async function touchSession(sessionId: string) {
+  const now = Date.now();
+  await getDb().session.updateMany({
+    where: { id: sessionId, expiresAt: { gt: new Date(now) }, lastSeenAt: { lt: new Date(now - 30_000) } },
+    data: { lastSeenAt: new Date(now), expiresAt: new Date(now + IDLE_MS) },
+  });
+}
 
 /** Use at the top of every protected page and server action. */
 export async function requireUser() {

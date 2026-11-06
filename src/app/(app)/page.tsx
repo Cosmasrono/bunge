@@ -27,7 +27,9 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
   const tz = owner.timezone;
   const now = new Date();
   const { upcoming, past } = await getSchedule(owner.id, now);
-  const flash = sp.welcome
+  const flash = typeof sp.added === "string" && Number(sp.added) > 1
+    ? `Event added to ${Number(sp.added)} schedules. Everyone was notified.`
+    : sp.welcome
     ? "Email confirmed — your account is ready!"
     : sp.saved
       ? "Event saved. Reminders are set."

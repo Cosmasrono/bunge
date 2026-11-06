@@ -141,6 +141,9 @@ model Event {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Who added the event: the owner, or an admin adding it to someone else's schedule.
   createdById    String?  @db.ObjectId
+  /// Set when one event was added to several people's schedules at once ("Everyone"): all the copies share it,
+  /// so they can be changed or deleted together.
+  batchId        String?
   title          String
   location       String   @default("")
   notes          String   @default("")
@@ -160,6 +163,7 @@ model Event {
 
   @@index([userId])
   @@index([startUtc])
+  @@index([batchId])
   @@map("events")
 }
 

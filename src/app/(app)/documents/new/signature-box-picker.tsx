@@ -1,10 +1,10 @@
 "use client";
 
-import { Loader2, MousePointerClick } from "lucide-react";
+import { Loader2, MousePointerClick, Move } from "lucide-react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import { useEffect, useRef, useState } from "react";
 
-type Box = { page: number; x: number; y: number; w: number; h: number };
+export type Box = { page: number; x: number; y: number; w: number; h: number };
 
 const A4_RATIO = 595.28 / 841.89;
 const SIZES = [
@@ -18,15 +18,41 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 
 type Person = { id: string; name: string };
 
+/** What to show inside the signer's box: their drawn or typed signature, so they see exactly what they're placing. */
+export type SignaturePreview = { kind: "drawn"; src: string } | { kind: "typed"; text: string } | null;
+
 /**
- * Shows the PDF's pages and lets the sender click where each signer's signature should go. The result is a hidden
+ * Shows the PDF's pages and lets someone click where a signature should go. The result is a hidden
  * "signatureBoxes" field: {"<userId>": {page, x, y, w, h}} with positions as fractions of the page.
- * Anyone without a box signs on the certificate pages only.
+ *
+ * Sender mode (a local `file`, several `signers`, optional): marks each person's spot; anyone without one signs on
+ * the certificate pages only. Signer mode (`url` of the stored PDF, one signer, `optional={false}`): the signer must
+ * click where their own signature goes. With `fixedBox`, the sender already chose the spot and it is only shown.
  */
-export function SignatureBoxPicker({ file, blank, signers }: { file: File | null; blank: boolean; signers: Person[] }) {
-  const [place, setPlace] = useState(true);
-  const [loaded, setLoaded] = useState<{ source: File; pdf: PDFDocumentProxy } | null>(null);
-  const [failed, setFailed] = useState<File | null>(null);
+export function SignatureBoxPicker({
+  file = null,
+  url,
+  blank = false,
+  signers,
+  optional = true,
+  fixedBox,
+  onChange,
+  preview = null,
+}: {
+  file?: File | null;
+  url?: string;
+  blank?: boolean;
+  signers: Person[];
+  optional?: boolean;
+  fixedBox?: Box | null;
+  onChange?: (boxes: Record<string, Box>) => void;
+  preview?: SignaturePreview;
+}) {
+  const source: File | string | null = url ?? file;
+  const [placeChosen, setPlace] = useState(true);
+  const place = optional ? placeChosen : true;
+  const [loaded, setLoaded] = useState<{ source: File | string; pdf: PDFDocumentProxy } | null>(null);
+  const [failed, setFailed] = useState<File | string | null>(null);
   const [chosenPage, setChosenPage] = useState<number | null>(null);
   const [rendered, setRendered] = useState<{ key: string; ratio: number; rotate: number } | null>(null);
   const [boxes, setBoxes] = useState<Record<string, Box>>({});
@@ -34,22 +60,28 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
   // Whose box a click places: the one picked, else the first signer without a box yet.
   const active = signers.find((s) => s.id === chosenActive)?.id ?? (signers.find((s) => !boxes[s.id]) ?? signers[0])?.id ?? null;
   const box = active ? (boxes[active] ?? null) : null;
-  const setBox = (b: Box) => active && setBoxes((cur) => ({ ...cur, [active]: b }));
+  const setBox = (b: Box) => {
+    if (!active || fixedBox) return;
+    const next = { ...boxes, [active]: b };
+    setBoxes(next);
+    onChange?.(next);
+  };
   const [size, setSize] = useState(1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
-  const pdf = !blank && file && loaded?.source === file ? loaded.pdf : null;
+  const pdf = !blank && source && loaded?.source === source ? loaded.pdf : null;
   const pageCount = blank ? 1 : (pdf?.numPages ?? 0);
-  const page = clamp(chosenPage ?? pageCount - 1, 0, Math.max(0, pageCount - 1));
+  const page = clamp(chosenPage ?? fixedBox?.page ?? pageCount - 1, 0, Math.max(0, pageCount - 1));
   const renderKey = pdf ? `${pdf.fingerprints[0]}:${page}` : "";
   const info = blank ? { ratio: A4_RATIO, rotate: 0 } : rendered?.key === renderKey ? rendered : null;
-  const loading = !blank && !!file && !pdf && failed !== file;
+  const loading = !blank && !!source && !pdf && failed !== source;
 
-  // Load the chosen PDF in the browser (nothing is uploaded until the form is sent).
+  // Load the PDF in the browser: the sender's chosen file (nothing is uploaded until the form is sent), or the
+  // stored document for a signer (same site, so their sign-in cookie comes along).
   useEffect(() => {
-    if (blank || !file) return;
+    if (blank || !source) return;
     let cancelled = false;
     let task: PDFDocumentLoadingTask | null = null;
     void (async () => {
@@ -57,25 +89,25 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
         task = pdfjs.getDocument({
-          data: new Uint8Array(await file.arrayBuffer()),
+          ...(typeof source === "string" ? { url: source } : { data: new Uint8Array(await source.arrayBuffer()) }),
           standardFontDataUrl: "/pdfjs/standard_fonts/",
           cMapUrl: "/pdfjs/cmaps/",
           cMapPacked: true,
         });
         const doc = await task.promise;
         if (cancelled) return;
-        setLoaded({ source: file, pdf: doc });
+        setLoaded({ source, pdf: doc });
         setChosenPage(null);
         setBoxes({});
       } catch {
-        if (!cancelled) setFailed(file);
+        if (!cancelled) setFailed(source);
       }
     })();
     return () => {
       cancelled = true;
       void task?.destroy();
     };
-  }, [file, blank]);
+  }, [source, blank]);
 
   // Draw the current page.
   useEffect(() => {
@@ -126,23 +158,26 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
     }
   }
 
-  if (!blank && !file) return null;
-  const kept = Object.fromEntries(Object.entries(boxes).filter(([id, b]) => b.page < pageCount && signers.some((s) => s.id === id)));
+  if (!blank && !source) return null;
+  const kept = Object.fromEntries(Object.entries(fixedBox && signers[0] ? { [signers[0].id]: fixedBox } : boxes).filter(([id, b]) => b.page < pageCount && signers.some((s) => s.id === id)));
   const value = place && Object.keys(kept).length ? JSON.stringify(kept) : "";
   const nameOf = (id: string) => signers.find((s) => s.id === id)?.name ?? "";
 
   return (
     <div className="space-y-3">
       <input type="hidden" name="signatureBoxes" value={value} />
-      <label className="flex items-start gap-3 text-sm">
-        <input type="checkbox" checked={place} onChange={(e) => setPlace(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-(--primary)" />
-        <span>
-          <span className="block font-medium">Put the signatures on the document</span>
-          <span className="block text-xs text-faint">
-            Mark each person&apos;s spot, for example their &quot;Signature&quot; line. A signature certificate page per person is always added at the end too.
+      {optional && (
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" checked={place} onChange={(e) => setPlace(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-(--primary)" />
+          <span>
+            <span className="block font-medium">Put the signatures on the document</span>
+            <span className="block text-xs text-faint">
+              Mark each person&apos;s spot, for example their &quot;Signature&quot; line. Anyone you don&apos;t mark chooses their own spot when they sign. A signature
+              certificate page per person is always added at the end too.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      )}
 
       {place && (
         <div className="space-y-3 rounded-xl border border-border bg-surface-2/60 p-3 sm:p-4">
@@ -151,7 +186,7 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
               <Loader2 className="size-4 animate-spin" /> Opening the PDF…
             </p>
           )}
-          {!blank && failed === file && <p className="text-sm text-danger">This PDF can&apos;t be previewed, so the signature will go on the certificate page only.</p>}
+          {!blank && failed === source && <p className="text-sm text-danger">This PDF can&apos;t be previewed, so the signature will go on the certificate page only.</p>}
 
           {pageCount > 0 && signers.length === 0 && <p className="text-sm text-muted">Choose who signs (below) to mark where each signature goes.</p>}
           {pageCount > 0 && signers.length > 0 && (
@@ -178,7 +213,7 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                {pageCount > 1 && (
+                {pageCount > 1 && !fixedBox && (
                   <select
                     aria-label="Page"
                     value={page}
@@ -192,6 +227,7 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
                     ))}
                   </select>
                 )}
+                {!fixedBox && (<>
                 <span className="inline-flex rounded-lg bg-surface p-0.5 ring-1 ring-border" role="group" aria-label="Signature size">
                   {SIZES.map((s, i) => (
                     <button
@@ -213,6 +249,7 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
                     {label as string}
                   </button>
                 ))}
+                </>)}
               </div>
 
               <div ref={wrapRef} className="relative mx-auto w-full max-w-[560px] overflow-hidden rounded-lg bg-white shadow-card ring-1 ring-border">
@@ -223,7 +260,7 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
                 )}
                 {info && !rotated && (
                   <div
-                    className="absolute inset-0 cursor-crosshair touch-none"
+                    className={`absolute inset-0 touch-none ${fixedBox ? "" : "cursor-crosshair"}`}
                     onPointerDown={(e) => {
                       e.currentTarget.setPointerCapture(e.pointerId);
                       dragging.current = true;
@@ -240,6 +277,13 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
                     }}
                     onPointerCancel={() => (dragging.current = false)}
                   >
+                    {!optional && !fixedBox && !box && (
+                      <div className="pointer-events-none absolute inset-x-4 top-1/2 flex -translate-y-1/2 items-center justify-center">
+                        <span className="flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-text shadow-pop">
+                          <MousePointerClick className="size-4" /> Click where your signature goes
+                        </span>
+                      </div>
+                    )}
                     {Object.entries(kept)
                       .filter(([, b]) => b.page === page)
                       .map(([id, b]) => (
@@ -250,7 +294,17 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
                           }`}
                           style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%` }}
                         >
-                          {signers.length > 1 ? nameOf(id) : "Sign here"}
+                          {!optional && preview?.kind === "drawn" ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={preview.src} alt="Your signature" className="size-full object-contain" />
+                          ) : !optional && preview?.kind === "typed" ? (
+                            <span className="truncate font-serif text-[15px] font-normal text-[#141a52] italic">{preview.text}</span>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              {!optional && !fixedBox && <Move className="size-3" />}
+                              {signers.length > 1 ? nameOf(id) : optional ? "Sign here" : "Your signature"}
+                            </span>
+                          )}
                         </div>
                       ))}
                   </div>
@@ -260,8 +314,14 @@ export function SignatureBoxPicker({ file, blank, signers }: { file: File | null
 
               <p className="flex items-start gap-1.5 text-xs text-muted">
                 <MousePointerClick className="mt-px size-3.5 shrink-0" />
-                {rotated
+                {fixedBox
+                  ? `The sender marked where your signature goes: the box on page ${fixedBox.page + 1}.`
+                  : rotated
                   ? "This page is turned sideways, which isn't supported for placing a signature. Choose another page, or the signature goes on the certificate page only."
+                  : !optional
+                  ? box
+                    ? `Your signature goes in the box on page ${box.page + 1}. Click or drag to move it.`
+                    : "Click on the document where your signature should go, for example on the line above your name."
                   : box
                     ? `${signers.length > 1 ? `${nameOf(active!)}'s signature` : "Signature"} goes on page ${box.page + 1}.${box.page !== page ? " (Switch to that page to move it.)" : " Click or drag to move it."}`
                     : `Click on the page where ${signers.length > 1 ? `${nameOf(active!)}'s` : "the"} signature should go.`}

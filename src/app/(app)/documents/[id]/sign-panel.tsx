@@ -5,12 +5,17 @@ import { useActionState, useRef, useState } from "react";
 import { declineDocument, signDocument } from "@/app/actions/documents";
 import { FormMessage, SubmitButton } from "@/components/form";
 import type { Evidence } from "@/lib/evidence";
+import { SignatureBoxPicker, type Box } from "../new/signature-box-picker";
 
 const W = 600;
 const H = 200;
 
-/** The signer's panel: draw or type a signature, agree, and submit. Decline is tucked underneath. */
-export function SignPanel({ documentId, signerName }: { documentId: string; signerName: string }) {
+/**
+ * The signer's panel: (1) choose where on the document the signature goes, unless the sender already did,
+ * (2) draw or type it, agree, and submit. Decline is tucked underneath.
+ */
+export function SignPanel({ documentId, signerName, userId, fixedBox }: { documentId: string; signerName: string; userId: string; fixedBox: Box | null }) {
+  const [placed, setPlaced] = useState(Boolean(fixedBox));
   const [state, action] = useActionState(signDocument.bind(null, documentId), undefined);
   const [declineState, declineAction] = useActionState(declineDocument.bind(null, documentId), undefined);
   const [mode, setMode] = useState<"drawn" | "typed">("drawn");
@@ -96,8 +101,40 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
     if (!drawing.current) return;
     drawing.current = false;
     setHasInk(true);
-    setDrawn(e.currentTarget.toDataURL("image/png"));
+    setDrawn(trimmed(e.currentTarget));
   };
+
+  /** The drawing cropped to the pen strokes (plus a small margin), so the signature fills its box on the document. */
+  function trimmed(c: HTMLCanvasElement) {
+    const ctx = c.getContext("2d");
+    if (!ctx) return c.toDataURL("image/png");
+    const { data, width, height } = ctx.getImageData(0, 0, c.width, c.height);
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (data[(y * width + x) * 4 + 3] > 10) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return c.toDataURL("image/png");
+    const pad = 6;
+    const sx = Math.max(0, minX - pad);
+    const sy = Math.max(0, minY - pad);
+    const sw = Math.min(width, maxX + pad + 1) - sx;
+    const sh = Math.min(height, maxY + pad + 1) - sy;
+    const out = document.createElement("canvas");
+    out.width = sw;
+    out.height = sh;
+    out.getContext("2d")?.drawImage(c, sx, sy, sw, sh, 0, 0, sw, sh);
+    return out.toDataURL("image/png");
+  }
 
   const clear = () => {
     const c = canvas.current;
@@ -107,12 +144,12 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
   };
 
   // Location is compulsory: the button stays off until the device has shared it.
-  const ready = agree && !locating && Boolean(evidence?.geo) && (mode === "drawn" ? hasInk : typed.trim().length >= 2);
+  const ready = placed && agree && !locating && Boolean(evidence?.geo) && (mode === "drawn" ? hasInk : typed.trim().length >= 2);
 
   return (
     <section className="card p-5 sm:p-6">
       <h2 className="font-semibold">Sign this document</h2>
-      <p className="mt-1 text-sm text-muted">Read the document above, then sign below.</p>
+      <p className="mt-1 text-sm text-muted">Read the document above. Then mark where your signature goes, and sign.</p>
       <p className="mt-3 flex items-start gap-2 rounded-xl bg-warning-soft px-3 py-2.5 text-sm text-warning">
         <MapPin className="mt-px size-4 shrink-0" />
         Your location is required to sign. When you tick the box below, your browser asks for it: choose Allow.
@@ -123,6 +160,20 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
         <input type="hidden" name="kind" value={mode} />
         <input type="hidden" name="drawn" value={mode === "drawn" ? drawn : ""} />
         <input type="hidden" name="evidence" value={JSON.stringify(evidence ?? { geoStatus: "skipped", geo: null })} />
+
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">1. {fixedBox ? "Where your signature goes" : "Choose where your signature goes"}</h3>
+          <SignatureBoxPicker
+            url={`/api/documents/${documentId}/file`}
+            signers={[{ id: userId, name: signerName }]}
+            optional={false}
+            fixedBox={fixedBox}
+            onChange={(boxes) => setPlaced(Boolean(boxes[userId]))}
+            preview={mode === "drawn" ? (drawn ? { kind: "drawn", src: drawn } : null) : typed.trim() ? { kind: "typed", text: typed.trim() } : null}
+          />
+        </div>
+
+        <h3 className="text-sm font-semibold">2. Your signature</h3>
 
         <div role="tablist" aria-label="Signature type" className="inline-flex rounded-xl bg-surface-2 p-1 text-sm font-medium">
           {([
@@ -224,6 +275,7 @@ export function SignPanel({ documentId, signerName }: { documentId: string; sign
           </p>
         )}
 
+        {!placed && <p className="text-sm font-medium text-danger">Click on the document (step 1) to choose where your signature goes.</p>}
         <SubmitButton pendingText="Signing…" disabled={!ready}>
           Sign and submit
         </SubmitButton>
