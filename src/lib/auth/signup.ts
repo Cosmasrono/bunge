@@ -53,7 +53,7 @@ async function deliver(email: string, name: string, code: string | null) {
  * If the email is already registered, it behaves exactly the same on screen
  * (so nobody can test which emails have accounts), but no code can ever match.
  */
-export async function startSignup(input: { email: string; name: string; passwordHash: string; role: "admin" | "staff" }) {
+export async function startSignup(input: { email: string; name: string; phone: string; passwordHash: string; role: "admin" | "staff" }) {
   const db = getDb();
   const exists = await emailExists(input.email);
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
@@ -139,7 +139,7 @@ export async function verifySignupCode(code: string): Promise<VerifyResult> {
     return { ok: false, error: "This email already has an account. Please sign in.", restart: true };
   }
   const user = await db.user.create({
-    data: { email: pending.email, name: pending.name, passwordHash: pending.passwordHash, role: pending.role, timezone: DEFAULT_TZ },
+    data: { email: pending.email, name: pending.name, phone: pending.phone, passwordHash: pending.passwordHash, role: pending.role, timezone: DEFAULT_TZ },
     select: { id: true },
   });
   await db.pendingSignup.deleteMany({ where: { id: pending.id } });

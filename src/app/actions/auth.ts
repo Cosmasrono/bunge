@@ -16,6 +16,7 @@ import {
 } from "@/lib/auth/session";
 import { APP_NAME, APP_URL, mailConfigured, sendEmail } from "@/lib/mail";
 import { signupOpen } from "@/lib/auth/invite";
+import { normalizePhone } from "@/lib/sms";
 import { DEFAULT_TZ, isValidTimeZone } from "@/lib/time";
 
 export type FormState = { error?: string; ok?: string; fields?: Record<string, string> } | undefined;
@@ -86,12 +87,14 @@ const signupSchema = z.object({
 
 /** Shared by public sign-up and first-time admin setup: validate, then email a code. */
 async function beginSignup(form: FormData, role: "admin" | "staff"): Promise<FormState> {
-  const fields = { name: String(form.get("name") ?? "").slice(0, 100), email: String(form.get("email") ?? "").slice(0, 200) };
+  const fields = { name: String(form.get("name") ?? "").slice(0, 100), email: String(form.get("email") ?? "").slice(0, 200), phone: String(form.get("phone") ?? "").trim().slice(0, 30) };
   if (!mailConfigured()) {
     return { error: "Email isn't set up on the server yet, so we can't send a verification code. Please contact the administrator.", fields };
   }
   const parsed = signupSchema.safeParse({ name: form.get("name"), email: form.get("email"), password: form.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message, fields };
+  const phone = normalizePhone(fields.phone);
+  if (!phone) return { error: "Enter your mobile number, for example 0712 345 678.", fields };
   if (parsed.data.password !== form.get("confirm")) return { error: "The two passwords don't match.", fields };
   const problem = passwordProblem(parsed.data.password, parsed.data.email);
   if (problem) return { error: problem, fields };
@@ -104,6 +107,7 @@ async function beginSignup(form: FormData, role: "admin" | "staff"): Promise<For
     await startSignup({
       name: parsed.data.name,
       email: parsed.data.email,
+      phone,
       passwordHash: await hashPassword(parsed.data.password),
       role,
     });

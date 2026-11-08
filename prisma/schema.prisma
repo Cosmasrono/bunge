@@ -48,6 +48,8 @@ model User {
   timezone     String    @default("Africa/Nairobi")
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
+  /// Phone number in international format (+254...). Empty = no SMS messages.
+  phone        String?
   /// Extra permissions for staff, granted by a director or admin (admins and directors always have them).
   canSchedule      Boolean?
   canSendDocuments Boolean?
@@ -60,6 +62,7 @@ model User {
   signDocuments  Document[] @relation("DocumentSigner")
   signerRows     DocumentSigner[]
   pushSubscriptions PushSubscription[]
+  messageLogs       MessageLog[]
   notices        Notice[]
 
   @@map("users")
@@ -100,6 +103,7 @@ model PendingSignup {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   email        String
   name         String
+  phone        String?
   passwordHash String
   role         Role     @default(staff)
   codeHash     String
@@ -308,4 +312,22 @@ model StoredFile {
   createdAt DateTime @default(now())
 
   @@map("stored_files")
+}
+
+/// One line per notification: whether its email and its SMS went out (Settings -> Message log).
+/// Status: sent, failed, off (not set up), no_number, none (this notification had no email).
+model MessageLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  url         String
+  emailStatus String
+  emailError  String?
+  smsStatus   String
+  smsError    String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("message_log")
 }

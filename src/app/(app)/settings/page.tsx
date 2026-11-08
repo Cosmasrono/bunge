@@ -1,5 +1,6 @@
-import { CheckCircle2, ChevronDown, CircleAlert, Clock, Mail } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, CircleAlert, Clock, Mail, MessageSquare } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/session";
 import { APP_URL, mailSummary } from "@/lib/mail";
 import { lastReminderRun } from "@/lib/reminders";
@@ -32,6 +33,15 @@ export default async function SettingsPage() {
       <div className="grid items-start gap-6 lg:grid-cols-[160px_minmax(0,1fr)] lg:gap-8">
       <SectionNav items={[{ id: "email", label: "Email", icon: Mail }, { id: "reminders", label: "Reminders", icon: Clock }]} />
       <div className="min-w-0 space-y-6">
+
+      <Link href="/settings/messages" className="card flex items-center gap-3 p-4 transition-colors hover:bg-surface-2 sm:p-5">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"><MessageSquare aria-hidden className="size-4.5" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Message log</span>
+          <span className="block text-sm text-muted">See whether each notification&apos;s email and SMS went out.</span>
+        </span>
+        <ChevronRight aria-hidden className="size-4 shrink-0 text-faint" />
+      </Link>
 
       <section id="email" className="card p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">

@@ -4,7 +4,9 @@ import { signOutOtherDevices } from "@/app/actions/auth";
 import { Flash } from "@/components/client-bits";
 import { getDb } from "@/db";
 import { pushConfigured, vapidPublicKey } from "@/lib/push";
+import { smsConfigured } from "@/lib/sms";
 import { PushSettings } from "./push-settings";
+import { PhoneForm } from "./phone-form";
 import { requireUser } from "@/lib/auth/session";
 import { PasswordForm, ProfileForm } from "./forms";
 import { PageHeader, SectionHeading, SectionNav } from "@/components/page-header";
@@ -52,6 +54,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
         ) : (
           <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning">Device notifications aren&apos;t available yet. Your administrator needs to finish setting them up.</p>
         )}
+        {smsConfigured() && <PhoneForm phone={user.phone ?? ""} />}
       </section>
 
       <section id="password" className="card p-5 sm:p-6">

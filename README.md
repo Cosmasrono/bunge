@@ -182,6 +182,18 @@ Good to know:
   URL with `CRON_SECRET`.
 - If a device stops being reachable (the app was uninstalled, permissions removed), it is dropped automatically.
 
+## SMS messages (through MobileSasa)
+
+Reminders, documents to sign and "added to your schedule" alerts go by SMS to anyone with a saved mobile number.
+
+1. In your MobileSasa account, open **API Tokens** and create a token with the **Send messages** permission. It starts with `mbs_` and is shown only once.
+2. Add `MOBILESASA_API_TOKEN` to `.env` (and Vercel). Add `MOBILESASA_SENDER_ID` once you have an approved sender name; without it, `MOBILESASA` is used. Then restart.
+3. Each person's number is saved at sign-up or invite, or under **Account → Notifications**, where **Send a test SMS** checks it.
+
+MobileSasa refuses an identical message to the same number twice in one day (the Message log shows this as a failure). Messages are cut to one SMS (160 plain characters) to keep the cost down.
+
+**Message log:** admins can see, under **Settings → Message log**, whether each notification's email and SMS went out, with the reason for any failure. Entries are kept for 90 days. "Sent" means the email server or MobileSasa accepted the message; it doesn't confirm it reached the person.
+
 ## Documents (send a PDF to be signed)
 
 Admins and directors can send a document to one or more people to sign (including themselves, to try it out).

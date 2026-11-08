@@ -24,6 +24,9 @@ export function SignupForm() {
           defaultValue={state?.fields?.email}
         />
       </Field>
+      <Field label="Mobile number" htmlFor="phone" hint="For SMS reminders and documents to sign.">
+        <input id="phone" name="phone" type="tel" required maxLength={30} autoComplete="tel" className="input" placeholder="0712 345 678" defaultValue={state?.fields?.phone} />
+      </Field>
       <Field label="Password" htmlFor="password" hint="At least 10 characters. A short phrase is easy to remember and hard to guess.">
         <PasswordInput id="password" name="password" required minLength={10} autoComplete="new-password" />
       </Field>

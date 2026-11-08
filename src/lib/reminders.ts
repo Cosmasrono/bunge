@@ -2,6 +2,8 @@ import { getDb, isUniqueViolation } from "@/db";
 import type { EventRow } from "@/db/schema";
 import { APP_URL, mailConfigured, sendEmail } from "./mail";
 import { pushConfigured, sendPushToUser } from "./push";
+import { attempt, deliverSms, failedRecently, logDelivery, type ChannelResult } from "./delivery";
+import { smsConfigured } from "./sms";
 import { formatWhen, humanUntil, leadLabel, nextOccurrence, REPEAT_LABELS } from "./time";
 
 const MIN = 60_000;
@@ -25,8 +27,9 @@ export async function runDueReminders(now = new Date()): Promise<Result> {
   const result: Result = { checked: 0, sent: 0, failed: 0, errors: [] };
   const emailOn = mailConfigured();
   const pushOn = pushConfigured();
-  if (!emailOn && !pushOn) {
-    result.errors.push("Neither email nor push notifications are configured");
+  const smsOn = smsConfigured();
+  if (!emailOn && !pushOn && !smsOn) {
+    result.errors.push("No email, push or SMS is configured");
     await saveStatus(now, result);
     return result;
   }
@@ -42,7 +45,7 @@ export async function runDueReminders(now = new Date()): Promise<Result> {
       emailReminders: true, // the "Reminders" switch on the event
       OR: [{ repeat: { not: "none" } }, { startUtc: { gt: windowStart } }],
     },
-    include: { user: { select: { email: true, name: true } } },
+    include: { user: { select: { email: true, name: true, phone: true } } },
   });
 
   for (const { user, ...event } of events) {
@@ -51,8 +54,9 @@ export async function runDueReminders(now = new Date()): Promise<Result> {
     if (!event.leads.length) continue;
     const viaEmail = emailOn;
     const viaPush = pushUsers.has(event.userId);
+    const viaPhone = smsOn && Boolean(user.phone);
     // Nowhere to send it: leave it unclaimed, so it still goes out if a channel is set up in time.
-    if (!viaEmail && !viaPush) continue;
+    if (!viaEmail && !viaPush && !viaPhone) continue;
 
     // The occurrence that may have just started (for "at start" reminders)
     // and the next upcoming one (for "before" reminders).
@@ -101,13 +105,14 @@ export async function runDueReminders(now = new Date()): Promise<Result> {
           failures.push(`push: ${(err as Error).message}`);
         }
       }
-      if (viaEmail) {
-        try {
-          await sendReminderEmail(event, message, lead, email, name);
-          delivered = true;
-        } catch (err) {
-          failures.push(`email: ${(err as Error).message}`);
-        }
+      const emailResult: ChannelResult = viaEmail ? await attempt(() => sendReminderEmail(event, message, lead, email, name)) : { status: "off" };
+      const smsResult = await deliverSms(user, message.pushTitle, message.pushBody);
+      if (emailResult.status === "sent" || smsResult.status === "sent") delivered = true;
+      if (emailResult.status === "failed") failures.push(`email: ${emailResult.error}`);
+      if (smsResult.status === "failed") failures.push(`SMS: ${smsResult.error}`);
+      // A reminder that failed everywhere is retried on the next run; don't add a log line for every retry.
+      if (delivered || !(await failedRecently(event.userId, message.pushTitle))) {
+        await logDelivery({ userId: event.userId, title: message.pushTitle, url: `/events/${event.id}`, email: emailResult, sms: smsResult });
       }
 
       if (delivered) {
@@ -125,7 +130,8 @@ export async function runDueReminders(now = new Date()): Promise<Result> {
     }
   }
 
-  // Housekeeping: forget sent-markers older than 60 days.
+  // Housekeeping: keep the message log for 90 days; forget sent-markers older than 60 days.
+  await db.messageLog.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - 90 * 86_400_000) } } });
   await db.reminderSent.deleteMany({ where: { occurrence: { lt: new Date(now.getTime() - 60 * 86_400_000) } } });
   await saveStatus(now, result);
   return result;

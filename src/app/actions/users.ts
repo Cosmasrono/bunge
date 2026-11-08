@@ -10,6 +10,7 @@ import { ROLE_LABEL } from "@/lib/auth/permissions";
 import { allowAttempt, audit } from "@/lib/auth/request";
 import { requireAdmin, requireManager } from "@/lib/auth/session";
 import { mailConfigured } from "@/lib/mail";
+import { normalizePhone } from "@/lib/sms";
 import type { FormState } from "./auth";
 
 const ROLES = ["admin", "director", "staff"] as const;
@@ -32,6 +33,7 @@ export async function inviteUser(_: FormState, form: FormData): Promise<FormStat
     role: String(form.get("role") ?? "staff"),
     canSchedule: form.get("canSchedule") === "on" ? "on" : "",
     canSendDocuments: form.get("canSendDocuments") === "on" ? "on" : "",
+    phone: String(form.get("phone") ?? "").trim().slice(0, 30),
   };
   const parsed = inviteSchema.safeParse(fields);
   if (!parsed.success) return { error: parsed.error.issues[0].message, fields };
@@ -43,11 +45,14 @@ export async function inviteUser(_: FormState, form: FormData): Promise<FormStat
   if (await db.user.findUnique({ where: { email: parsed.data.email }, select: { id: true } })) {
     return { error: "That email already has an account.", fields };
   }
+  const phone = normalizePhone(fields.phone);
+  if (!phone) return { error: "Enter their mobile number, for example 0712 345 678.", fields };
   const staff = parsed.data.role === "staff";
   // The password is a random value nobody knows; the person sets their own through the emailed link.
   const user = await db.user.create({
     data: {
       ...parsed.data,
+      phone,
       passwordHash: await hashPassword(randomToken(32)),
       canSchedule: staff ? fields.canSchedule === "on" : null,
       canSendDocuments: staff ? fields.canSendDocuments === "on" : null,

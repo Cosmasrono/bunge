@@ -20,6 +20,9 @@ export function InviteForm({ anyRole }: { anyRole: boolean }) {
         <Field label="Email" htmlFor="email">
           <input id="email" name="email" type="email" required maxLength={200} autoComplete="off" className="input" placeholder="name@company.com" defaultValue={f?.email} />
         </Field>
+        <Field label="Mobile number" htmlFor="phone" hint="For reminders and documents to sign by SMS.">
+          <input id="phone" name="phone" type="tel" required maxLength={30} autoComplete="off" className="input" placeholder="0712 345 678" defaultValue={f?.phone} />
+        </Field>
       </div>
       <Field
         label="Role"
