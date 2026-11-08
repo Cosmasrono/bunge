@@ -29,7 +29,7 @@ export default async function NewEventPage({ searchParams }: PageProps<"/events/
   const o = eventFormOptions(user.timezone);
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader back={{ href: "/", label: "Schedule" }} eyebrow="Make a little plan" title="New event" description="Add the details. Set a reminder. We'll help you stay on time." />
+      <PageHeader back={{ href: "/", label: "Schedule" }} title="New event" description="Add the details. Set a reminder. We'll help you stay on time." />
       <EventForm
         action={createEvent}
         submitLabel="Save event"

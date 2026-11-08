@@ -59,7 +59,6 @@ export default async function SchedulePage({ searchParams }: PageProps<"/">) {
           <h1 className="mt-2 text-[26px] leading-tight font-semibold tracking-tight sm:text-[32px]">
             {viewing ? `${viewing.name}'s schedule` : `${greeting(utcToWall(now, tz).h)}, ${user.name.split(" ")[0]}`}
           </h1>
-          <p className="mt-2 text-sm text-muted">A little planning. A calmer day.</p>
         </div>
         <Link href={newHref} className="btn-primary">
           <Plus className="size-4" /> New event

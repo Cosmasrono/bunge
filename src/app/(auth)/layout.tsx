@@ -1,4 +1,4 @@
-import { ArrowUpRight, BellRing, CalendarClock, Check, FileSignature, ShieldCheck } from "lucide-react";
+import { BellRing, CalendarClock, Check, FileSignature } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import landing from "@/lib/landing-image.json";
@@ -22,17 +22,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <Link href="/" aria-label="Go to home" className="w-fit"><Logo className="text-white" /></Link>
 
         <div className="my-14 max-w-lg">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1.5 text-[11px] font-medium tracking-wider text-[#f3d4e1] uppercase"><span aria-hidden className="size-1.5 rounded-full bg-[#eab4cd]" /> A little more organised</span>
-          <h2 className="mt-7 text-[42px] leading-[1.15] font-medium tracking-tight xl:text-[52px]">Make room for<br />what matters.</h2>
-          <p className="mt-5 max-w-sm text-[15px] leading-7 text-white/80">Your schedule, reminders, and documents.<br />Together in one simple workspace.</p>
+          <h2 className="mt-7 text-[42px] leading-[1.15] font-medium tracking-tight xl:text-[52px]">Schedules, reminders<br />and document signing.</h2>
+          <p className="mt-5 max-w-sm text-[15px] leading-7 text-white/80">Manage meetings, get reminders by email and SMS, and sign documents online.</p>
 
           <div className="mt-10 rounded-2xl border border-white/15 bg-white/[0.07] p-5 backdrop-blur-sm">
-            <p className="flex items-center justify-between text-xs font-medium text-white/75">A calmer way to work<ArrowUpRight aria-hidden className="size-4" /></p>
             <div className="mt-5 space-y-4">
               {[
-                { icon: CalendarClock, title: "Plan your day", text: "Meetings, tasks, and appointments" },
-                { icon: BellRing, title: "Stay a step ahead", text: "Helpful reminders, right on time" },
-                { icon: FileSignature, title: "Keep work moving", text: "Send and sign documents easily" },
+                { icon: CalendarClock, title: "Schedule", text: "Meetings, tasks, and appointments" },
+                { icon: BellRing, title: "Reminders", text: "By email and SMS" },
+                { icon: FileSignature, title: "Documents", text: "Send and sign PDFs" },
               ].map(({ icon: Icon, title, text }) => (
                 <div key={title} className="flex items-center gap-3">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-[#f3d4e1]"><Icon aria-hidden className="size-[18px]" /></span>
@@ -45,7 +43,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <footer>
-          <p className="flex items-center gap-2 text-xs text-white/80"><ShieldCheck aria-hidden className="size-4" /> Your work, in a secure workspace.</p>
           {image?.credit && <p className="mt-4 max-w-md text-[10px] leading-relaxed text-white/65">{image.credit}</p>}
         </footer>
       </aside>
@@ -62,16 +59,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </>
           )}
           <Link href="/" aria-label="Go to home" className="w-fit"><Logo className="text-white" /></Link>
-          <p className="text-2xl leading-tight font-medium tracking-tight sm:text-3xl">Make room for what matters.</p>
+          <p className="text-2xl leading-tight font-medium tracking-tight sm:text-3xl">Schedules, reminders and document signing.</p>
         </div>
         <main id="auth-content" tabIndex={-1} className="flex flex-1 items-center justify-center px-1 py-10 outline-none sm:px-8 lg:py-12">
           <div className="w-full max-w-[420px]">
             <div className="mb-8 flex size-12 items-center justify-center rounded-2xl border border-border bg-surface text-primary shadow-card"><CalendarClock aria-hidden className="size-6" /></div>
             {children}
-            <p className="mt-8 flex items-center justify-center gap-1.5 border-t border-border pt-6 text-xs text-faint"><ShieldCheck aria-hidden className="size-3.5" /> A secure space for your everyday work</p>
           </div>
         </main>
-        <p className="pb-3 text-center text-xs text-faint">Plan simply. Work calmly.</p>
         {image?.credit && <p className="px-2 pb-3 text-center text-[10px] leading-relaxed text-faint lg:hidden">{image.credit}</p>}
       </div>
     </div>

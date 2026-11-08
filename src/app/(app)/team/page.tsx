@@ -42,7 +42,7 @@ export default async function TeamPage({ searchParams }: PageProps<"/team">) {
   return (
     <div>
       {flash && <Flash message={flash} />}
-      <PageHeader eyebrow="Better together" title="Your team" description="Find your people, manage access, and invite someone new." actions={<Link href="#invite-person" className="btn-primary"><UserPlus className="size-4" />Invite teammate</Link>} />
+      <PageHeader title="Your team" description="Manage accounts and permissions." actions={<Link href="#invite-person" className="btn-primary"><UserPlus className="size-4" />Invite teammate</Link>} />
       {error && <p role="alert" className="mb-6 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">{error}</p>}
       <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
         <TeamDirectory users={users.map((person) => ({ ...person, lastLoginAt: person.lastLoginAt?.toISOString() ?? null }))} meId={me.id} isAdmin={isAdmin} timezone={me.timezone} />

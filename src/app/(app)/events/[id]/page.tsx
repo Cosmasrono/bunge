@@ -25,7 +25,7 @@ export default async function EditEventPage({ params }: PageProps<"/events/[id]"
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader back={{ href: "/", label: "Schedule" }} eyebrow="Keep your plans up to date" title="Edit event" description={event.userId !== user.id ? `Update ${event.title} on ${event.user.name}'s schedule.` : `Update the details and reminders for ${event.title}.`} />
+      <PageHeader back={{ href: "/", label: "Schedule" }} title="Edit event" description={event.userId !== user.id ? `Update ${event.title} on ${event.user.name}'s schedule.` : `Update the details and reminders for ${event.title}.`} />
       <EventForm
         action={updateEvent.bind(null, event.id)}
         submitLabel="Save changes"

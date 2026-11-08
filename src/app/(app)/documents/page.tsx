@@ -29,7 +29,6 @@ export default async function DocumentsPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="mb-2 text-[11px] font-semibold tracking-[0.16em] text-faint uppercase">Keep work moving</p>
           <h1 className="text-[28px] leading-tight font-semibold tracking-tight sm:text-[32px]">Documents</h1>
           <p className="mt-2 max-w-lg text-sm text-muted">Send, sign, and keep track of your documents in one place.</p>
         </div>

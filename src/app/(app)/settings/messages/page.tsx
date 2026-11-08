@@ -37,7 +37,7 @@ export default async function MessageLogPage({ searchParams }: PageProps<"/setti
       <Link href="/settings" className="btn-ghost -ml-2 mb-3 px-2">
         <ArrowLeft className="size-4" /> Settings
       </Link>
-      <PageHeader eyebrow="Workspace preferences" title="Message log" description="Whether each notification's email and SMS went out." />
+      <PageHeader title="Message log" description="Whether each notification's email and SMS went out." />
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Notifications" value={total} />

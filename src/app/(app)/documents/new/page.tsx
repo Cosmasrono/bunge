@@ -30,7 +30,7 @@ export default async function NewDocumentPage() {
   const today = `${w.y}-${String(w.m).padStart(2, "0")}-${String(w.d).padStart(2, "0")}`;
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader back={{ href: "/documents", label: "Documents" }} eyebrow="From request to signed" title="Send a document" description="Choose a file, select your signers, and we'll keep everyone updated." />
+      <PageHeader back={{ href: "/documents", label: "Documents" }} title="Send a document" description="Choose a file, select your signers, and we'll keep everyone updated." />
       <NewDocumentForm signers={signers} meId={user.id} maxBytes={uploadLimitBytes()} today={today} />
     </div>
   );

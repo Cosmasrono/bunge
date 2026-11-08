@@ -36,7 +36,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
   return (
     <div className="mx-auto max-w-5xl">
       {signedOut && <Flash message="Signed out on your other devices." />}
-      <PageHeader eyebrow="Make yourself at home" title="Your account" description="Manage your profile, notifications, and account security." />
+      <PageHeader title="Your account" description="Manage your profile, notifications, and account security." />
       <div className="grid items-start gap-6 lg:grid-cols-[160px_minmax(0,1fr)] lg:gap-8">
       <SectionNav items={[{ id: "profile", label: "Profile", icon: UserRound }, { id: "notifications", label: "Notifications", icon: BellRing }, { id: "password", label: "Password", icon: KeyRound }, { id: "devices", label: "Devices", icon: MonitorSmartphone }]} />
       <div className="min-w-0 space-y-6">

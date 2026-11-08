@@ -29,7 +29,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader eyebrow="Workspace preferences" title="Settings" description="Keep your workspace's email and reminders running smoothly." />
+      <PageHeader title="Settings" description="Keep your workspace's email and reminders running smoothly." />
       <div className="grid items-start gap-6 lg:grid-cols-[160px_minmax(0,1fr)] lg:gap-8">
       <SectionNav items={[{ id: "email", label: "Email", icon: Mail }, { id: "reminders", label: "Reminders", icon: Clock }]} />
       <div className="min-w-0 space-y-6">
